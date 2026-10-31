@@ -1,57 +1,59 @@
-/* Supervisor desk: Meera Joshi, Bhawan supervisor, Himalaya Bhawan (girls), IIT Roorkee.
-   Reports come in from students; she checks them, assigns IWD technicians, signs off closures,
-   handles blocked jobs, disputes and repeat failures. Everything here is mock data you can act on. */
-import { createStore, D, H, Trade } from '../data/iitr'
+/* Supervisor desk: Meera, Bhawan supervisor, Himalaya Bhawan, IIT Roorkee.
+   The words and numbers are the ones on the Figma screens. Everything is local mock data you can act on. */
+import { createStore } from '../data/iitr'
 
-export type RStatus = 'new' | 'assigned' | 'closure' | 'blocked' | 'disputed' | 'closed' | 'merged' | 'rejected'
-export type Rep = {
-  id: string; room: string; block: string; item: string; issue: string; trade: Trade; note: string; student: string; at: number
-  photo: string | null; status: RStatus; tech?: string; dupOf?: string; urgent?: boolean; shared?: number
-  closedBy?: string; fix?: string; blockedWhy?: string; blockedSince?: number; studentSays?: string; techSays?: string
-}
-export type TechRow = { id: string; name: string; trade: Trade; blocks: string; today: number; cap: number; rating: number; on: boolean; jobs: [number, number, string][] }
+export const EMAIL_OK = /^[a-z0-9][a-z0-9._-]*@([a-z0-9-]+\.)?iitr\.ac\.in$/i
 
-const n = Date.now()
-const reps = (): Rep[] => [
-  { id: '2417', room: 'B-104', block: 'B', item: 'Ceiling fan', issue: 'Not spinning', trade: 'Electrical', note: 'Fan stops after a few minutes. Free after 6 PM.', student: 'Siddhi Sharma', at: n - 2 * H, photo: 'photo-fan', status: 'new', dupOf: '2402' },
-  { id: '2416', room: 'C-212', block: 'C', item: 'Tap', issue: 'Leaking', trade: 'Plumbing', note: 'Second tap in the east washroom drips all night.', student: 'Ananya Verma', at: n - 5 * H, photo: null, status: 'new', shared: 3 },
-  { id: '2415', room: 'A-018', block: 'A', item: 'Socket', issue: 'Sparks or burning smell', trade: 'Electrical', note: 'Burning smell from the socket near the desk.', student: 'Kavya Nair', at: n - 1 * H, photo: 'photo', status: 'new', urgent: true },
-  { id: '2414', room: 'B-305', block: 'B', item: 'Chair', issue: 'Leg loose', trade: 'Carpentry', note: '', student: 'Riya Gupta', at: n - 1 * D, photo: 'photo-chair', status: 'new' },
-  { id: '2413', room: 'C-209', block: 'C', item: 'Window', issue: 'Will not latch', trade: 'Carpentry', note: 'Rain comes in.', student: 'Meghna Rao', at: n - 3 * D, photo: null, status: 'new' },
-  { id: '2412', room: 'A-110', block: 'A', item: 'Tube light', issue: 'Flickering', trade: 'Electrical', note: '', student: 'Pooja Iyer', at: n - 4 * D, photo: null, status: 'new' },
-  { id: '2402', room: 'B-104', block: 'B', item: 'Ceiling fan', issue: 'Stops after a minute', trade: 'Electrical', note: 'Sent by the roommate.', student: 'Tanvi Joshi', at: n - 2 * D, photo: null, status: 'assigned', tech: 't1' },
-  // closures waiting for sign-off
-  { id: '2398', room: 'B-111', block: 'B', item: 'Ceiling fan', issue: 'Noisy', trade: 'Electrical', note: '', student: 'Shreya Das', at: n - 2 * D, photo: 'photo-fan', status: 'closure', tech: 't1', closedBy: 'code', fix: 'Capacitor replaced. Ran the fan for five minutes at all speeds.' },
-  { id: '2396', room: 'C-203', block: 'C', item: 'Tap', issue: 'Leaking', trade: 'Plumbing', note: '', student: 'Ishita Roy', at: n - 3 * D, photo: null, status: 'closure', tech: 't3', closedBy: 'code', fix: 'Changed the washer and the spindle.' },
-  { id: '2395', room: 'F1 corridor', block: 'A', item: 'Tube light', issue: 'Not turning on', trade: 'Electrical', note: '', student: '3 students', at: n - 3 * D, photo: null, status: 'closure', tech: 't2', closedBy: 'photo', fix: 'New choke fitted. Photo attached, no code: hallway job.' },
-  { id: '2393', room: 'A-205', block: 'A', item: 'Almirah', issue: 'Hinge broken', trade: 'Carpentry', note: '', student: 'Nidhi Bansal', at: n - 4 * D, photo: null, status: 'closure', tech: 't4', closedBy: 'code', fix: 'Replaced both hinges.' },
-  // blocked
-  { id: '2381', room: 'Pump room', block: 'A', item: 'Water pump motor', issue: 'Burnt out', trade: 'Electrical', note: '', student: 'Warden', at: n - 6 * D, photo: null, status: 'blocked', tech: 't1', blockedWhy: 'Waiting for purchase approval', blockedSince: n - 6 * D },
-  { id: '2385', room: 'B-208', block: 'B', item: 'Geyser', issue: 'Leaking', trade: 'Plumbing', note: '', student: 'Aditi Mehra', at: n - 4 * D, photo: null, status: 'blocked', tech: 't3', blockedWhy: 'Vendor visit booked for Tuesday', blockedSince: n - 4 * D },
-  { id: '2388', room: 'C-102', block: 'C', item: 'Window', issue: 'Glass cracked', trade: 'Carpentry', note: '', student: 'Sana Khan', at: n - 3 * D, photo: null, status: 'blocked', tech: 't4', blockedWhy: 'Glass not in stock at the IWD store', blockedSince: n - 3 * D },
-  // disputes
-  { id: '2370', room: 'B-305', block: 'B', item: 'Chair', issue: 'Leg loose', trade: 'Carpentry', note: '', student: 'Riya Gupta', at: n - 8 * D, photo: 'photo-chair', status: 'disputed', tech: 't4', studentSays: 'Still wobbly. The leg moves.', techSays: 'Tightened the screw and tested it.' },
-  { id: '2374', room: 'A-301', block: 'A', item: 'Tap', issue: 'Leaking', trade: 'Plumbing', note: '', student: 'Divya Menon', at: n - 6 * D, photo: null, status: 'disputed', tech: 't3', studentSays: 'It drips again since this morning.', techSays: 'Changed the washer. No drip when I left.' },
+/* "To check" list: the six rows in the Figma, in its order (oldest first is the Figma's promise,
+   the rows are drawn as the designer laid them out). */
+export type Row = { id: string; room: string; block: string; title: string; item: string; sub: string; age: string; late: boolean; dot: 'navy' | 'ring' | 'brick'
+  quote: string; photo: 'fan' | 'chair' | null; dup: boolean }
+export const ROWS: Row[] = [
+  { id: 'r1', room: 'BG04', block: 'C', title: 'Fan not working', item: 'ceiling fan', sub: 'Block C · note + photo', age: '2h ago', late: false, dot: 'navy', quote: '“Fan stops after a few minutes. Free after 6 PM.”', photo: 'fan', dup: true },
+  { id: 'r2', room: 'F2', block: 'A', title: 'Router light is red', item: 'router', sub: 'Block A · no photo', age: '5h ago', late: false, dot: 'navy', quote: '“The light has been red since the morning.”', photo: null, dup: false },
+  { id: 'r3', room: '118', block: 'D', title: 'Tap leaking under the sink', item: 'tap', sub: 'Block D · photo', age: '1d ago', late: false, dot: 'navy', quote: '“Water collects under the sink by night.”', photo: null, dup: false },
+  { id: 'r4', room: 'B305', block: 'B', title: 'Chair broken, leg loose', item: 'chair', sub: 'Block B · photo', age: '4d ago', late: true, dot: 'ring', quote: '“One leg moves when I sit.”', photo: 'chair', dup: false },
+  { id: 'r5', room: 'C209', block: 'C', title: 'Window will not latch', item: 'window', sub: 'Block C · note', age: '4d ago', late: true, dot: 'ring', quote: '“Rain comes in at night.”', photo: null, dup: false },
+  { id: 'r6', room: '340', block: 'A', title: 'Motor unit noisy', item: 'motor unit', sub: 'Block A · note + photo', age: '6d ago', late: true, dot: 'brick', quote: '“Loud hum from the pump room.”', photo: null, dup: false },
 ]
-export const TEAM: TechRow[] = [
-  { id: 't1', name: 'Ravi Kumar', trade: 'Electrical', blocks: 'B, C', today: 4, cap: 6, rating: 4.8, on: true, jobs: [[17, 0.5, 'C-214'], [18, 0.5, 'B-104'], [18.5, 0.5, 'F1'], [19.5, 0.5, 'A-012']] },
-  { id: 't2', name: 'Suresh Pal', trade: 'Electrical', blocks: 'A', today: 3, cap: 6, rating: 4.6, on: true, jobs: [[17.5, 0.5, 'A-110'], [19, 1, 'A-018'], [20.5, 0.5, 'A-121']] },
-  { id: 't3', name: 'Imran Ali', trade: 'Plumbing', blocks: 'All', today: 5, cap: 5, rating: 4.7, on: true, jobs: [[17, 0.5, 'C-212'], [17.5, 0.5, 'C-203'], [18.5, 1, 'B-208'], [20, 0.5, 'A-301'], [21, 0.5, 'B-014']] },
-  { id: 't4', name: 'Deepak Saini', trade: 'Carpentry', blocks: 'All', today: 2, cap: 6, rating: 4.9, on: true, jobs: [[18, 1, 'B-305'], [20, 0.5, 'C-209']] },
-  { id: 't5', name: 'Mahesh Chauhan', trade: 'Civil', blocks: 'All', today: 0, cap: 4, rating: 4.5, on: false, jobs: [] },
+export const NEW_ROW: Row = { id: 'r7', room: 'C117', block: 'C', title: 'Geyser not heating', item: 'geyser', sub: 'Block C · note', age: 'just now', late: false, dot: 'navy', quote: '“No hot water since this morning.”', photo: null, dup: false }
+
+export const CLOSURES = [
+  { room: 'BG11', block: 'B', when: 'yesterday 8:52 PM', tech: 'Ravi', did: 'Capacitor replaced. Ran the fan for five minutes.' },
+  { room: 'C203', block: 'C', when: 'yesterday 7:40 PM', tech: 'Imran', did: 'Changed the washer and the spindle.' },
+  { room: 'A205', block: 'A', when: 'yesterday 6:15 PM', tech: 'Deepak', did: 'Replaced both hinges of the almirah.' },
+  { room: 'F1', block: 'A', when: 'yesterday 5:30 PM', tech: 'Sunil', did: 'New choke fitted in the corridor light.' },
+  { room: 'B111', block: 'B', when: '2 days ago', tech: 'Ravi', did: 'Fixed the loose switchboard.' },
+  { room: 'D102', block: 'D', when: '2 days ago', tech: 'Sunil', did: 'Cleaned the clogged drain.' },
 ]
-export const techName = (id?: string) => TEAM.find(t => t.id === id)?.name || 'Unassigned'
+export const BLOCKED = [
+  { room: '340', title: 'Motor unit', why: 'Waiting for purchase approval', days: '6d', sub: 'Blocked 6 days · Block A · water pump motor' },
+  { room: 'B208', title: 'Geyser leaks', why: 'Vendor visit booked Tuesday', days: '4d', sub: 'Blocked 4 days · Block B · geyser' },
+  { room: 'F11', title: 'Door lock stuck', why: 'No master key for this floor', days: '3d', sub: 'Blocked 3 days · Block F · door lock' },
+  { room: 'C102', title: 'Window glass cracked', why: 'Part not in stock', days: '3d', sub: 'Blocked 3 days · Block C · window' },
+]
+export const DISPUTES = [
+  { room: 'B305', item: 'Chair', tech: 'Ravi', student: '“Still wobbly. The leg moves.”', techSays: '“Tightened the screw, tested it.”', open: '1d open' },
+  { room: 'F2', item: 'Router', tech: 'Imran', student: '“Light is still red.”', techSays: '“Light was green when I left.”', open: '2d open' },
+  { room: 'A301', item: 'Tap', tech: 'Deepak', student: '“It drips again.”', techSays: '“Changed the washer, no drip.”', open: '3d open' },
+]
 export const FIXTURES = [
-  { id: 'f1', room: 'B-104', item: 'Ceiling fan', n: 3, months: 5, last: '3 weeks ago', worth: true, log: [['3 weeks ago', 'Capacitor replaced', 'Ravi'], ['2 months ago', 'Capacitor replaced', 'Suresh'], ['5 months ago', 'Bearing noise, cleaned', 'Ravi']] },
-  { id: 'f2', room: 'B-208', item: 'Geyser', n: 3, months: 6, last: 'now', worth: true, log: [['4 days ago', 'Leaking, vendor called', 'Imran'], ['3 months ago', 'Thermostat replaced', 'Suresh'], ['6 months ago', 'Pressure valve', 'Imran']] },
-  { id: 'f3', room: 'C-209', item: 'Window latch', n: 2, months: 4, last: '3 days ago', worth: false, log: [['3 days ago', 'Will not latch', 'Deepak'], ['4 months ago', 'Latch tightened', 'Deepak']] },
-  { id: 'f4', room: 'A-301', item: 'Tap', n: 2, months: 3, last: '6 days ago', worth: false, log: [['6 days ago', 'Washer changed', 'Imran'], ['3 months ago', 'Washer changed', 'Imran']] },
-  { id: 'f5', room: 'F1 corridor', item: 'Tube light', n: 2, months: 2, last: '3 days ago', worth: false, log: [['3 days ago', 'Choke replaced', 'Suresh'], ['2 months ago', 'Tube replaced', 'Suresh']] },
+  { room: 'BG04', item: 'Ceiling fan', sub: 'Block C · 3 repairs in 5 months' },
+  { room: 'B208', item: 'Geyser', sub: 'Block B · 3 repairs in 4 months' },
+  { room: 'F2', item: 'Router', sub: 'Block A · 2 repairs in 3 weeks' },
+  { room: 'C102', item: 'Window latch', sub: 'Block C · 2 repairs in 2 months' },
+  { room: 'A301', item: 'Tap', sub: 'Block A · 2 repairs in 6 weeks' },
 ]
+export const TEAM = [
+  { name: 'Ravi', blocks: 'BG, F, C' }, { name: 'Imran', blocks: 'A, B' }, { name: 'Deepak', blocks: 'C, D' }, { name: 'Sunil', blocks: 'D, E' },
+]
+
 export type State = {
-  signedIn: boolean; reps: Rep[]; bhawan: string; promise: number; autoEscalate: number; missedRule: number; quietFrom: string; forecastMoved: boolean
+  signedIn: boolean; email: string; rows: Row[]; closureAt: number; blockedLeft: number[]; disputesLeft: number[]
+  escalated: number[]; moved: boolean; leftAlone: boolean; bhawan: number; replaceSuggested: number[]
+  rules: number[]; rulesSaved: boolean; shift: number[]; blockSet: number[]
 }
-export const store = createStore<State>('align.sup.v2', () => ({ signedIn: false, reps: reps(), bhawan: 'All blocks', promise: 3, autoEscalate: 5, missedRule: 2, quietFrom: '9:00 PM', forecastMoved: false }))
-export const setRep = (id: string, p: Partial<Rep>) => store.set(s => ({ reps: s.reps.map(r => (r.id === id ? { ...r, ...p } : r)) }))
-export const ageDays = (at: number) => Math.floor((Date.now() - at) / D)
-export const ageText = (at: number) => { const h = Math.round((Date.now() - at) / H); return h < 24 ? `${Math.max(1, h)}h` : `${Math.round(h / 24)}d` }
+export const store = createStore<State>('align.sup.fig.v1', () => ({
+  signedIn: false, email: '', rows: ROWS, closureAt: 0, blockedLeft: [0, 1, 2, 3], disputesLeft: [0, 1, 2],
+  escalated: [], moved: false, leftAlone: false, bhawan: 0, replaceSuggested: [], rules: [0, 0, 0, 0, 0, 0, 0], rulesSaved: false, shift: [0, 0, 0, 0], blockSet: [0, 0, 0, 0],
+}))

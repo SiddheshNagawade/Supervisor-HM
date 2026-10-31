@@ -1,552 +1,432 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Check as CheckIcon, Search, WifiOff, X, ArrowRight, Merge, Clock3, Camera, KeyRound, ShieldAlert, Phone, Users, Undo2, Sparkles, AlertTriangle, ChevronRight, CircleCheck, Send, RotateCcw, Wrench, Mail, Lock, Eye, EyeOff, Zap, Droplets, Hammer, BrickWall, TrendingUp, CalendarDays, OctagonAlert, Flag } from '../ds/icons'
-import { Art, Avatar, Button, Card, Chip, Choice, Dialog, Segmented, Tag, TextArea, TextField, Toggle, Tooltip, cx, Divider, Stars } from '../ds/ui'
-import { CountUp, Drop, Rise, Words, Stamp, ArtIn, spring, springPop, Pop } from '../ds/motion'
+/* Supervisor desk screens. Every screen is the Figma frame itself (ALIGN v3, Supervisor sections),
+   drawn by the Figma renderer. This file only attaches behaviour to the Figma layers by node id,
+   and plays each drawing's own one-time animation when the screen opens. */
+import React, { ReactNode, createContext, useContext, useEffect, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Fig, FNode, Binds, textStyle } from '../fig/Fig'
+import { Reveal, Slap, PlaceDown, Settle } from '../fig/anim'
+import { NavApi } from '../ds/nav'
 import { fx } from '../ds/fx'
-import { ago, dayTime, Trade } from '../data/iitr'
-import { Page, H2, Dot, SearchBox, useApp, Screen } from './shell'
-import { store, setRep, Rep, TEAM, techName, FIXTURES, ageDays, ageText } from './store'
+import FIG from './fig.json'
+import { store, EMAIL_OK, NEW_ROW, CLOSURES, BLOCKED, DISPUTES, FIXTURES, TEAM, Row } from './store'
 
-const TRADE_ICON: Record<Trade, ReactNode> = { Electrical: <Zap size={18} />, Plumbing: <Droplets size={18} />, Carpentry: <Hammer size={18} />, Civil: <BrickWall size={18} /> }
-const Photo = ({ n, cap, w = 260 }: { n: string; cap: string; w?: number }) => (
-  <figure className="m-0 inline-block overflow-hidden rounded-[10px] border border-line bg-paper shadow-desk" style={{ width: w }}>
-    <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-sand"><Art n={n} className="h-full w-auto" /></div>
-    <figcaption className="border-t border-rule px-3 py-2 text-[13px] text-mid">{cap}</figcaption>
-  </figure>
-)
-/** A quoted message from a student or technician: a left rule in their colour, no sticky-note theatrics. */
-const Sticky = ({ who, children, tone = 'sun' }: { who: string; children: ReactNode; tone?: 'sun' | 'sky' }) => (
-  <blockquote className={cx('m-0 rounded-r-[10px] border-l-[3px] py-3 pl-4 pr-4', tone === 'sun' ? 'border-sun bg-sun2/70' : 'border-canal bg-canal2/60')}>
-    <div className="text-[12px] font-semibold text-mid">{who}</div><div className="mt-1 text-[15px] leading-relaxed text-ink">{children}</div>
-  </blockquote>
-)
-/** Calm empty-state mark in place of the mascot on the desk. */
-const Mark = ({ children, tone = 'canal' }: { children: ReactNode; tone?: 'canal' | 'green' | 'sun' | 'brick' }) => (
-  <span className={cx('flex h-14 w-14 items-center justify-center rounded-full', { canal: 'bg-canal2 text-canal', green: 'bg-green2 text-green', sun: 'bg-sun2 text-navy', brick: 'bg-brick2 text-brick' }[tone])}>{children}</span>
-)
+export const S = (FIG as unknown as { screens: Record<string, FNode> }).screens
+export const RAILSETS = (FIG as unknown as { rail: string[][] }).rail
 
-/* ------------------------------ Sign in ------------------------------ */
-export function Login() {
+export type Screen = 'signin' | 'desk' | 'check' | 'review' | 'closure' | 'forecast' | 'blocked' | 'blockedOne' | 'disputes' | 'disputeOne'
+  | 'fixtures' | 'fixtureOne' | 'team' | 'tech' | 'rules' | 'e404' | 'offline' | 'e500' | 'expired'
+export type Modal = { kind: 'merge' | 'escalate' | 'reassign'; i?: number; from?: 'blocked' | 'dispute'; rowId?: string } | null
+type AppCtx = { nav: NavApi<Screen>; setModal: (m: Modal) => void }
+export const Ctx = createContext<AppCtx>(null!)
+const useApp = () => useContext(Ctx)
+const P = <T,>(nav: NavApi<Screen>, k: string, d: T) => (nav.params[k] as T) ?? d
+
+/* ---------- small helpers to bind Figma layers ---------- */
+const B = (...parts: Binds[]): Binds => Object.assign({}, ...parts)
+const id = (n: string | number) => (String(n).includes(':') ? String(n) : '232:' + n)
+/** A Figma button is a rectangle with a text on top. The rectangle takes the click. */
+const btn = (rect: string | number, fn: () => void, label?: string): Binds => ({ [id(rect)]: { onClick: () => { fx.tap(); fn() }, label } })
+const txt = (n: string | number, text: ReactNode, style?: React.CSSProperties): Binds => ({ [id(n)]: { text, style } })
+const hide = (...ns: (string | number)[]): Binds => Object.fromEntries(ns.map(n => [id(n), { hide: true }]))
+const wrapAll = (ns: FNode[], fn: (n: FNode, i: number) => (el: ReactNode) => ReactNode): Binds => Object.fromEntries(ns.map((n, i) => [n.i, { wrap: (el: ReactNode) => fn(n, i)(el) }]))
+const arts = (s: FNode, pred: (n: FNode) => boolean) => (s.k || []).filter(n => n.art && pred(n))
+
+/* ---------- one-time motions for the drawings ---------- */
+function Drop({ children, delay }: { children: ReactNode; delay: number }) {
+  const r = useReducedMotion()
+  return <motion.div initial={r ? false : { y: -26, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 520, damping: 19, delay }}>{children}</motion.div>
+}
+function Pop({ children, delay, sound }: { children: ReactNode; delay: number; sound?: () => void }) {
+  const r = useReducedMotion()
+  useEffect(() => { if (!sound || r) return; const t = setTimeout(sound, delay * 1000 + 80); return () => clearTimeout(t) }, [])
+  return <motion.div initial={r ? false : { scale: 0.2, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 520, damping: 17, delay }}>{children}</motion.div>
+}
+const drop = (d: number) => (el: ReactNode) => <Drop delay={d}>{el}</Drop>
+const pop = (d: number, sound?: () => void) => (el: ReactNode) => <Pop delay={d} sound={sound}>{el}</Pop>
+const rev = (dir: 'x' | 'y', d: number, dur = 0.9) => (el: ReactNode) => <Reveal dir={dir} delay={d} dur={dur}>{el}</Reveal>
+const slap = (d: number) => (el: ReactNode) => <Slap delay={d}>{el}</Slap>
+const place = (d: number) => (el: ReactNode) => <PlaceDown delay={d}>{el}</PlaceDown>
+const settle = (d: number) => (el: ReactNode) => <Settle delay={d}>{el}</Settle>
+const bar = (d: number): React.CSSProperties => ({ animation: `figbar .55s cubic-bezier(.22,1,.36,1) ${d}s both`, transformOrigin: 'left center' })
+
+/** A Figma text layer turned into a real text field, in the same font and colour. */
+const field = (n: string | number, value: string, onChange: (v: string) => void, o: { type?: string; width: number; placeholder?: string; onEnter?: () => void }): Binds => ({
+  [id(n)]: {
+    style: { width: o.width },
+    render: (node: FNode) => (
+      <input value={value} type={o.type || 'text'} placeholder={o.placeholder} spellCheck={false} autoComplete={o.type === 'password' ? 'current-password' : 'email'}
+        onChange={e => { const v = e.target.value; v.length > value.length ? fx.key(v.length % 9) : fx.erase(); onChange(v) }}
+        onKeyDown={e => { if (e.key === 'Enter') o.onEnter?.() }}
+        style={{ ...textStyle(node), width: '100%', height: '100%', background: 'transparent', border: 0, outline: 0, padding: 0, pointerEvents: 'auto' }} />
+    ),
+  },
+})
+
+/* ================= Sign in, and Session expired (same layout) ================= */
+function SignInLike({ s, ids }: { s: FNode; ids: { email: string; pass: string; r1: string; r2: string; go: string; forgot: string; l1: string; l2: string } }) {
   const { nav } = useApp()
-  const [email, setEmail] = useState('meera.joshi@iitr.ac.in'); const [pw, setPw] = useState('••••••••••'); const [show, setShow] = useState(false)
-  const [err, setErr] = useState(''); const [k, setK] = useState(0); const [busy, setBusy] = useState(false)
-  const go = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!/@([a-z]+\.)?iitr\.ac\.in$/i.test(email)) { fx.error(); setK(x => x + 1); setErr('Use your IIT Roorkee email'); return }
-    setBusy(true); setTimeout(() => { store.set({ signedIn: true }); fx.success(); nav.reset('home', { tr: 'swap' }) }, 700)
+  const saved = store.use(x => x.email)
+  const [email, setEmail] = useState(saved || 'meera@design.iitr.ac.in')
+  const [pass, setPass] = useState('hostel2026')
+  const [err, setErr] = useState<'' | 'email' | 'pass'>('')
+  const [forgot, setForgot] = useState(false)
+  const submit = () => {
+    if (!EMAIL_OK.test(email.trim())) { fx.error(); setErr('email'); return }
+    if (!pass) { fx.error(); setErr('pass'); return }
+    fx.success(); store.set({ signedIn: true, email: email.trim() }); nav.reset('desk', { tr: 'none' })
   }
-  const cols = [7, 6, 4, 5, 3, 2]
-  return (
-    <div className="flex h-full bg-cream">
-      <div className="relative flex w-[46%] flex-col overflow-hidden bg-navy p-12 text-cream">
-        <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-sun font-head text-[21px] font-bold text-navy"><span className="pt-[3px]">A</span></span><span className="font-head text-[22px] font-bold tracking-[0.14em]">ALIGN</span></div>
-        <div className="mb-10 mt-auto flex items-end gap-5" aria-hidden>
-          {cols.map((c, i) => <div key={i} className="flex flex-col-reverse gap-2">{Array.from({ length: c }, (_, j) => <motion.span key={j} initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1], delay: 0.1 + i * 0.04 + j * 0.02 }} className={cx('h-3.5 w-3.5 rounded-full', i === 3 && j === 4 ? 'bg-sun' : 'bg-cream/85')} />)}</div>)}
-        </div>
-        <Words text="Every request, counted and visible." className="max-w-[440px] font-head text-[32px] font-bold leading-tight" />
-        <p className="mt-3 max-w-[420px] text-[16px] text-cream/80">The desk for the people who keep a Bhawan running. Students report, IWD fixes, you see it all in one place.</p>
-      </div>
-      <form onSubmit={go} className="flex flex-1 flex-col justify-center px-[10%]">
-        <Rise><h1 className="font-head text-[32px] font-bold">Sign in</h1><p className="mt-1 text-[15px] text-mid">Supervisor desk · Himalaya Bhawan</p></Rise>
-        <Rise delay={0.08} className="mt-8 flex max-w-[400px] flex-col gap-4">
-          <TextField label="Work email" type="email" value={email} onChange={e => { setEmail(e.target.value); setErr('') }} prefix={<Mail size={20} />} error={err} shakeKey={k} />
-          <TextField label="Password" type={show ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} prefix={<Lock size={20} />}
-            suffix={<Tooltip label={show ? 'Hide password' : 'Show password'}><button type="button" onClick={() => setShow(!show)} aria-label="Show password" className="flex">{show ? <EyeOff size={20} /> : <Eye size={20} />}</button></Tooltip>} />
-        </Rise>
-        <Rise delay={0.14} className="mt-7 flex max-w-[400px] items-center gap-5"><Button type="submit" variant="primary" size="lg" full={false} loading={busy} className="min-w-[140px]">Sign in</Button><button type="button" className="text-[14px] font-medium text-mid hover:text-navy hover:underline underline-offset-4">Forgot password?</button></Rise>
-      </form>
-    </div>
-  )
+  const brick = { color: '#B8530A' }
+  const dots = arts(s, n => n.n === 'd' && n.w === 26)
+  const cols = [...new Set(dots.map(d => d.x))].sort((a, b) => a - b)
+  return <Fig s={s} binds={B(
+    field(ids.email, email, v => { setEmail(v); setErr('') }, { width: 436, onEnter: submit }),
+    field(ids.pass, pass, v => { setPass(v); setErr('') }, { width: 436, type: 'password', onEnter: submit }),
+    err === 'email' ? B(txt(ids.l1, 'Use your institute email, like name@design.iitr.ac.in', brick), { [ids.r1]: { style: { background: '#B8530A' } } }) : {},
+    err === 'pass' ? B(txt(ids.l2, 'Type your password', brick), { [ids.r2]: { style: { background: '#B8530A' } } }) : {},
+    forgot ? txt(ids.l2, 'Ask the Bhawan office to reset it, then sign in here', brick) : {},
+    btn(ids.go, submit, 'Sign in'),
+    { [ids.forgot]: { onClick: () => { fx.tap(); setForgot(true) } } },
+    // the dot chart fills in once, column by column, each dot falling into place
+    wrapAll(dots, n => drop(0.25 + cols.indexOf(n.x) * 0.16 + (626 - n.y) / 34 * 0.05)),
+  )} />
+}
+export const SignIn = () => <SignInLike s={S.signin} ids={{ email: '232:551', pass: '232:554', r1: '232:552', r2: '232:555', go: '232:556', forgot: '232:558', l1: '232:550', l2: '232:553' }} />
+export const Expired = () => <SignInLike s={S.expired} ids={{ email: '236:1377', pass: '236:1380', r1: '236:1378', r2: '236:1381', go: '236:1382', forgot: '236:1384', l1: '236:1376', l2: '236:1379' }} />
+
+/* ================= Desk ================= */
+const BHAWAN = ['Himalya Bhawan · all blocks  ⌄', 'Himalya Bhawan · Block A  ⌄', 'Himalya Bhawan · Block B  ⌄', 'Himalya Bhawan · Block C  ⌄', 'Himalya Bhawan · Block D  ⌄']
+export function Desk() {
+  const { nav, setModal } = useApp()
+  const b = store.use(x => x.bhawan)
+  const s = S.desk
+  const chart = arts(s, n => n.n === 'dot' && n.w === 22 && n.y <= 470)
+  const cols = [...new Set(chart.map(d => d.x))].sort((a, c) => a - c)
+  return <Fig s={s} binds={B(
+    btn(591, () => store.set({ bhawan: (b + 1) % BHAWAN.length }), 'Change block'), txt(592, BHAWAN[b]),
+    wrapAll(chart, n => drop(0.15 + cols.indexOf(n.x) * 0.12 + (468 - n.y) / 24 * 0.04)),
+    { '232:732': { wrap: rev('y', 0.9, 0.7) } },
+    { '232:759': { wrap: rev('x', 0.5) }, '232:789': { wrap: rev('x', 0.6) }, '232:813': { wrap: rev('x', 0.7) }, '232:833': { wrap: rev('x', 0.8) } },
+    ...['785', '809', '829', '845'].map((g, i) => ({ [id(g)]: { onClick: () => { fx.tap(); nav.reset('check', { tr: 'none' }) }, label: 'Open ' + ['Block C', 'Block A', 'Block D', 'Block B'][i] } })),
+    { '232:849': { wrap: pop(0.5) }, '232:860': { wrap: pop(0.6) }, '232:868': { wrap: pop(0.7) } },
+    { '232:875': { wrap: rev('x', 1.3, 1.1) } },
+    btn(855, () => { nav.go('blockedOne', { tr: 'none', p: { i: 0 } }); setModal({ kind: 'escalate', i: 0 }) }, 'Escalate'),
+    btn(857, () => nav.go('blockedOne', { tr: 'none', p: { i: 0 } }), 'Reassign'),
+    btn(865, () => nav.go('closure', { tr: 'none' }), 'Review all'),
+    btn(873, () => nav.go('disputeOne', { tr: 'none', p: { i: 0 } }), 'Open'),
+  )} />
 }
 
-/* ------------------------------ Home ------------------------------ */
-/** One figure in a KPI strip. The strip is a single panel split by hairlines. */
-function Kpi({ n, label, sub, tone = 'navy', onClick, decimals = 0 }: { n: number; label: string; sub: string; tone?: 'navy' | 'brick' | 'canal' | 'green'; onClick?: () => void; i?: number; decimals?: number }) {
-  const body = (
-    <>
-      <div className="flex items-center gap-2 text-[13px] font-medium text-mid"><span className={cx('h-2 w-2 rounded-full', { navy: 'bg-navy', brick: 'bg-brick', canal: 'bg-canal', green: 'bg-green' }[tone])} />{label}</div>
-      <div className={cx('mt-2 font-head text-[34px] font-bold leading-none tabular', { navy: 'text-navy', brick: 'text-brick', canal: 'text-canal', green: 'text-green' }[tone])}><CountUp to={n} decimals={decimals} /></div>
-      <div className="mt-1.5 text-[13px] text-mid">{sub}</div>
-    </>
-  )
-  return onClick
-    ? <button onClick={() => { fx.tap(); onClick() }} className="group px-6 py-5 text-left transition-colors hover:bg-cream">{body}</button>
-    : <div className="px-6 py-5">{body}</div>
-}
-const KpiStrip = ({ children, cols = 4 }: { children: ReactNode; cols?: number }) => (
-  <div className={cx('grid divide-x divide-rule overflow-hidden rounded-[12px] border border-line bg-paper shadow-desk', cols === 3 ? 'grid-cols-3' : 'grid-cols-4')}>{children}</div>
-)
-export function HomeScreen() {
+/* ================= To check ================= */
+const CHECK_SLOTS = [
+  [916, 920, 921, 922, 923, 924, 925, 926], [927, 931, 932, 933, 934, 935, 936, 937], [938, 942, 943, 944, 945, 946, 947, 948],
+  [949, 952, 953, 954, 955, 956, 957, 958], [959, 962, 963, 964, 965, 966, 967, 968], [969, 973, 974, 975, 976, 977, 978, 0],
+]
+const DOT = { navy: '232:916', ring: '232:949', brick: '232:969' }
+export function Check() {
   const { nav } = useApp()
-  const reps = store.use(s => s.reps); const promise = store.use(s => s.promise)
-  const open = reps.filter(r => !['closed', 'merged', 'rejected'].includes(r.status))
-  const days = ['Today', '1d', '2d', '3d', '4d', '5d', '6d', '7d+']
-  const cols = [7, 5, 4, 4, 3, 2, 3, 1]
-  const blocks = [['Block B', 12, 2], ['Block C', 9, 1], ['Block A', 8, 1], ['Block D', 4, 0]] as const
-  const hour = new Date().getHours()
-  const needs = [
-    { t: 'Burning smell, room A-018', b: 'Marked dangerous 1 hour ago. Warden alerted. Needs a technician tonight.', tone: 'brick' as const, a: <Button size="sm" variant="danger" full={false} onClick={() => nav.go('review', { tr: 'swap', p: { id: '2415' } })}>Assign now</Button> },
-    { t: 'Pump motor, blocked 6 days', b: 'Not in stock and the purchase is not approved. Past your 3 day promise.', tone: 'canal' as const, a: <Button size="sm" variant="primary" full={false} onClick={() => nav.go('blockedOne', { tr: 'swap', p: { id: '2381' } })}>Escalate</Button> },
-    { t: `${reps.filter(r => r.status === 'closure').length} closures to sign off`, b: 'Oldest from 4 days ago. Three were closed with the student\'s code.', tone: 'navy' as const, a: <Button size="sm" variant="secondary" full={false} onClick={() => nav.go('check', { tr: 'swap', p: { tab: 'closures' } })}>Review all</Button> },
+  const rows = store.use(x => x.rows)
+  const at = store.use(x => x.closureAt)
+  const binds: Binds[] = [
+    txt(911, String(rows.length)), txt(913, String(Math.max(0, CLOSURES.length - at))),
+    { '232:912': { onClick: () => { fx.select(); nav.go('closure', { tr: 'none' }) } } },
   ]
-  return (
-    <Page wide title={`Good ${hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'}, Meera.`} sub={`Three things need you. Everything else is moving: ${open.length} open, 4 technicians on shift.`}
-      right={<Segmented value={store.use(s => s.bhawan)} onChange={v => store.set({ bhawan: v })} options={['All blocks', 'A', 'B', 'C'].map(v => ({ v, label: v === 'All blocks' ? 'All' : `Block ${v}` }))} tone="canal" />}>
-      <KpiStrip>
-        <Kpi i={0} n={open.length} label="Open requests" sub="Across all blocks" onClick={() => nav.go('check', { tr: 'swap' })} />
-        <Kpi i={1} n={reps.filter(r => r.status === 'new').length} label="Waiting for you" sub="New reports to check" tone="canal" onClick={() => nav.go('check', { tr: 'swap' })} />
-        <Kpi i={2} n={4} label={`Past ${promise} days`} sub="Your promise to students" tone="brick" onClick={() => nav.go('blocked', { tr: 'swap' })} />
-        <Kpi i={3} n={6.2} decimals={1} label="Hours to fix" sub="Average this week, down 1.4" tone="green" />
-      </KpiStrip>
-      <div className="mt-10 grid grid-cols-[1fr_360px] gap-12">
-        <div>
-          <H2 right={<span className="text-[14px] text-mid">each dot is one request</span>}>Every open request, by how long it has waited</H2>
-          <div className="relative mt-6 flex h-[220px] items-end justify-between border-b border-navy/40 px-4 pb-1">
-            <div className="absolute bottom-0 top-0 border-l-[1.5px] border-dashed border-brick" style={{ left: `calc(${(promise / 8) * 100}% + 18px)` }}><span className="absolute -top-1 left-2 whitespace-nowrap text-[12px] font-medium text-brick">promise: {promise} days</span></div>
-            {days.map((d, i) => (
-              <div key={d} className="relative flex w-10 flex-col items-center">
-                <div className="flex flex-col-reverse gap-1.5">
-                  {Array.from({ length: cols[i] }, (_, k) => (
-                    <Tooltip key={k} label={`${d === 'Today' ? 'Reported today' : `Waiting ${d}`}${i >= promise ? ' · past the promise' : ''}`}>
-                      <motion.span className="block" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1], delay: 0.1 + i * 0.03 + k * 0.015 }}><Dot tone={i === 6 && k === 2 ? 'brick' : i >= promise ? 'ring' : 'navy'} size={14} /></motion.span>
-                    </Tooltip>
-                  ))}
-                </div>
-                <span className="absolute -bottom-8 text-[13px] text-mid">{d}</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-12 flex gap-6 text-[13px] text-mid"><span className="flex items-center gap-2"><Dot />waiting</span><span className="flex items-center gap-2"><Dot tone="ring" />past the promise</span><span className="flex items-center gap-2"><Dot tone="brick" />blocked</span></div>
-          <H2 className="mt-10">Where it is piling up</H2>
-          {blocks.map(([b, n, x], i) => (
-            <Rise key={b} delay={0.3 + i * 0.05}>
-              <button onClick={() => { fx.tap(); nav.go('check', { tr: 'swap' }) }} className="group flex w-full items-center gap-6 border-b border-line py-3.5 text-left hover:bg-navy/[0.03]">
-                <span className="w-24 text-[15px] font-semibold">{b}</span>
-                <span className="flex w-[280px] gap-1.5">{Array.from({ length: n }, (_, k) => <Dot key={k} tone={k >= n - x ? 'brick' : 'navy'} />)}</span>
-                <span className="flex-1 text-[14px] text-mid">{n} open{x ? <span className="font-semibold text-brick"> · {x} blocked</span> : ''}</span>
-                <ChevronRight className="text-faint transition-transform group-hover:translate-x-1" />
-              </button>
-            </Rise>
-          ))}
-        </div>
-        <aside>
-          <H2>Needs you</H2>
-          <div className="flex flex-col gap-3">
-            {needs.map((x, i) => (
-              <Drop key={x.t} delay={0.2 + i * 0.08} from={i % 2 ? 2 : -2}>
-                <div className="relative overflow-hidden rounded-[12px] border border-line bg-paper p-4 pl-5 shadow-desk">
-                  <span className={cx('absolute bottom-0 left-0 top-0 w-[3px]', { brick: 'bg-brick', canal: 'bg-canal', navy: 'bg-navy' }[x.tone])} />
-                  <div className="flex items-start gap-3"><span className="mt-0.5 font-mono text-[13px] text-faint">0{i + 1}</span>
-                    <div><div className="text-[15px] font-semibold leading-snug">{x.t}</div><p className="mt-1 text-[14px] leading-relaxed text-mid">{x.b}</p><div className="mt-3">{x.a}</div></div></div>
-                </div>
-              </Drop>
-            ))}
-          </div>
-        </aside>
-      </div>
-    </Page>
-  )
+  CHECK_SLOTS.forEach((sl, j) => {
+    const r = rows[j]
+    if (!r) { binds.push(hide(...sl.filter(Boolean)), j > 0 ? hide(CHECK_SLOTS[j - 1][7] || 0) : {}); return }
+    binds.push(
+      { [id(sl[0])]: { art: DOT[r.dot], wrap: pop(0.15 + j * 0.07) } },
+      txt(sl[1], r.room), txt(sl[2], r.title), txt(sl[3], r.sub), txt(sl[4], r.age, { color: r.late ? '#B8530A' : '#3E4F72' }),
+      btn(sl[5], () => nav.go('review', { tr: 'none', p: { id: r.id } }), 'Review ' + r.room),
+    )
+    if (j === rows.length - 1 && sl[7]) binds.push(hide(sl[7]))
+  })
+  return <Fig s={S.check} binds={B(...binds)} />
 }
 
-/* ------------------------------ To check ------------------------------ */
-export function CheckScreen() {
-  const { nav, toast } = useApp()
-  const reps = store.use(s => s.reps)
-  const [tab, setTab] = useState<'new' | 'closures'>((nav.params.tab as 'closures') || 'new')
-  const [q, setQ] = useState('')
-  const list = reps.filter(r => (tab === 'new' ? r.status === 'new' : r.status === 'closure')).filter(r => `${r.room} ${r.item} ${r.issue} ${r.student}`.toLowerCase().includes(q.toLowerCase())).sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0) || a.at - b.at)
-  const quick = (r: Rep) => {
-    const prev = r.status
-    setRep(r.id, tab === 'new' ? { status: 'assigned', tech: TEAM.find(t => t.trade === r.trade)?.id } : { status: 'closed' }); fx.check()
-    toast({ kind: 'bar', title: tab === 'new' ? `${r.room} accepted` : `${r.room} closure signed off`, body: tab === 'new' ? `Sent to ${techName(TEAM.find(t => t.trade === r.trade)?.id)}` : 'Student notified', icon: <CircleCheck size={20} />, action: { label: 'Undo', run: () => setRep(r.id, { status: prev }) } })
-  }
-  return (
-    <Page title="To check" sub="Reports and closures wait here until you say yes. Oldest first, so nothing hides." right={<SearchBox value={q} onChange={setQ} />}>
-      <Segmented tone="canal" value={tab} onChange={setTab} options={[{ v: 'new', label: 'New reports', count: reps.filter(r => r.status === 'new').length }, { v: 'closures', label: 'Closures', count: reps.filter(r => r.status === 'closure').length }]} />
-      <div className="mt-5 overflow-hidden rounded-[12px] border border-line bg-paper shadow-desk">
-        <div className="grid grid-cols-[110px_1.6fr_1fr_100px_220px] gap-4 border-b border-line bg-sand/60 px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[0.05em] text-mid"><span>Room</span><span>Problem</span><span>{tab === 'new' ? 'Reported by' : 'Closed by'}</span><span>Waiting</span><span className="text-right">Action</span></div>
-        <AnimatePresence initial={false}>
-          {list.map((r, i) => (
-            <motion.div key={r.id} layout initial={false} exit={{ opacity: 0, x: 60, height: 0, transition: { duration: 0.25 } }}
-              className="group grid cursor-pointer grid-cols-[110px_1.6fr_1fr_100px_220px] items-center gap-4 border-b border-rule px-5 py-3.5 last:border-0 hover:bg-cream"
-              onClick={() => { fx.tap(); nav.go(tab === 'new' ? 'review' : 'closure', { tr: 'swap', p: { id: r.id } }) }}>
-              <span className="flex items-center gap-2.5"><Dot tone={r.urgent ? 'brick' : ageDays(r.at) >= 3 ? 'ring' : 'navy'} /><span className="font-mono text-[15px] font-medium">{r.room}</span></span>
-              <span className="flex min-w-0 items-center gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-sand text-mid">{TRADE_ICON[r.trade]}</span><span className="min-w-0"><span className="block truncate text-[15px] font-semibold">{r.item} · {r.issue.toLowerCase()}</span><span className="block truncate text-[13px] text-mid">{r.trade}{r.photo ? ' · photo' : ''}{r.shared ? ` · ${r.shared} students` : ''}{r.dupOf ? ' · possible duplicate' : ''}</span></span>{r.urgent && <Tag tone="danger" icon={<AlertTriangle size={13} />}>Dangerous</Tag>}</span>
-              <span className="truncate text-[14px]">{tab === 'new' ? r.student : `${techName(r.tech)} · ${r.closedBy === 'code' ? 'code' : 'photo'}`}</span>
-              <span className={cx('font-mono text-[14px]', ageDays(r.at) >= 3 && 'font-medium text-brick')}>{ageText(r.at)}</span>
-              <span className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
-                <Button size="sm" variant="secondary" full={false} onClick={() => nav.go(tab === 'new' ? 'review' : 'closure', { tr: 'swap', p: { id: r.id } })}>Open</Button>
-                <Tooltip label={tab === 'new' ? 'Accept and send to the usual technician' : 'Sign off this closure'}><Button size="sm" variant="canal" full={false} icon={<CheckIcon size={16} strokeWidth={3} />} sound={false} onClick={() => quick(r)}>{tab === 'new' ? 'Accept' : 'Sign off'}</Button></Tooltip>
-              </span>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        {!list.length && <div className="flex flex-col items-center py-14 text-center"><Mark tone="green"><CircleCheck size={26} /></Mark><div className="mt-3 text-[17px] font-semibold">All checked</div><p className="text-[15px] text-mid">{q ? 'Nothing matches your search.' : 'Nothing is waiting for you here.'}</p></div>}
-      </div>
-    </Page>
-  )
-}
-
-/* ------------------------------ Review a report ------------------------------ */
+/* ================= Review report (+ Merge dialog) ================= */
+const CHIPS = [['232:1044', 'Ravi'], ['232:1055', 'Imran'], ['232:1070', 'Deepak']]
+const done = (rowId: string) => store.set(s => ({ rows: s.rows.filter(r => r.id !== rowId) }))
 export function Review() {
-  const { nav, toast } = useApp()
-  const reps = store.use(s => s.reps)
-  const r = reps.find(x => x.id === nav.params.id) || reps.find(x => x.status === 'new') || reps[0]
-  const dup = reps.find(x => x.id === r.dupOf)
-  const fits = TEAM.filter(t => t.trade === r.trade || r.trade === 'Civil')
-  const [tech, setTech] = useState(fits[0]?.id || 't1')
-  const [merge, setMerge] = useState(false); const [reject, setReject] = useState(false); const [why, setWhy] = useState('')
-  const done = (msg: string, body: string) => { toast({ kind: 'bar', title: msg, body, icon: <CircleCheck size={20} /> }); nav.reset('check', { tr: 'swap' }) }
-  return (
-    <Page back title={`${r.room} · ${r.item}`} sub={`${r.issue} · Block ${r.block} · reported ${ago(r.at)} by ${r.student}`} right={r.urgent ? <Tag tone="danger" icon={<AlertTriangle size={14} />}>Marked dangerous</Tag> : undefined}>
-      <div className="grid grid-cols-[300px_1fr] gap-12">
-        <div className="flex flex-col gap-6">
-          {r.photo ? <ArtIn><Photo n={r.photo} cap={`${r.item.toLowerCase()}, ${r.room}`} w={300} /></ArtIn> : <Card variant="flat" className="flex h-[200px] flex-col items-center justify-center gap-2 text-mid"><Camera size={28} />No photo</Card>}
-          {r.note && <Drop delay={0.1}><Sticky who={r.student}>"{r.note}"</Sticky></Drop>}
-        </div>
-        <div>
-          {dup && (
-            <Rise>
-              <H2 right={<span className="text-[13px] font-medium text-brick">same room, same fixture</span>}>Looks like the same problem</H2>
-              <div className="flex items-center justify-between gap-4 rounded-[10px] border border-dashed border-navy/30 bg-sand/60 p-4">
-                <div><div className="font-semibold">{dup.room} · {dup.item.toLowerCase()} {dup.issue.toLowerCase()}</div><div className="text-[14px] text-mid">Sent {ago(dup.at)} by {dup.student} · already with {techName(dup.tech)}</div></div>
-                <Button size="sm" variant="secondary" full={false} icon={<Merge size={16} />} onClick={() => setMerge(true)}>Merge</Button>
-              </div>
-            </Rise>
-          )}
-          <Rise delay={0.08}><H2 className="mt-8">Assign to</H2></Rise>
-          <div className="grid grid-cols-3 gap-3">
-            {fits.map(t => (
-              <Choice key={t.id} tone="canal" layout="row" on={tech === t.id} onClick={() => setTech(t.id)} title={t.name}
-                sub={`${t.trade} · ${t.today} of ${t.cap} tonight`} badge={<span className="flex shrink-0 gap-0.5" aria-hidden>{Array.from({ length: t.cap }, (_, k) => <span key={k} className={cx('h-1.5 w-1.5 rounded-full', k < t.today ? 'bg-navy' : 'bg-navy/15')} />)}</span>} />
-            ))}
-          </div>
-          <Rise delay={0.12} className="mt-5 flex items-center gap-2 text-[14px] text-mid"><Clock3 size={17} />Promise to the student: fixed within {store.get().promise} days{r.urgent ? '. Dangerous: same evening.' : '.'}</Rise>
-          <Rise delay={0.16} className="mt-8 flex items-center gap-4">
-            <Button variant="primary" size="md" full={false} icon={<Send size={17} />} onClick={() => { setRep(r.id, { status: 'assigned', tech }); fx.success(); done(`${r.room} sent to ${techName(tech)}`, 'The student has been told') }}>Accept and assign</Button>
-            <Button variant="ghost" size="md" full={false} className="!text-brick" onClick={() => setReject(true)}>Not a real problem</Button>
-          </Rise>
-        </div>
-      </div>
-      <Dialog open={merge} onClose={() => setMerge(false)} title="Merge these two reports?"
-        footer={<><Button variant="primary" size="md" full={false} icon={<Merge size={18} />} onClick={() => { setRep(r.id, { status: 'merged' }); setMerge(false); fx.success(); done('Reports merged', `${r.room} is now one job`) }}>Merge</Button><Button variant="secondary" size="md" full={false} onClick={() => setMerge(false)}>Keep separate</Button></>}>
-        <p className="text-[16px] text-mid">They become one job for {r.room}. Both students keep getting updates, and the technician sees one {r.item.toLowerCase()} to fix.</p>
-        {dup && <div className="mt-5 flex items-center gap-3"><Card variant="outline" className="flex-1 p-3"><div className="font-semibold">{r.item} {r.issue.toLowerCase()}</div><div className="text-[14px] text-mid">{r.student} · {ago(r.at)}</div></Card><ArrowRight size={20} className="text-mid" /><Card variant="outline" className="flex-1 !border-canal p-3"><div className="font-semibold">{dup.item} {dup.issue.toLowerCase()}</div><div className="text-[14px] text-mid">{dup.student} · {ago(dup.at)}</div></Card></div>}
-      </Dialog>
-      <Dialog open={reject} onClose={() => setReject(false)} title="Close as not a real problem?"
-        footer={<><Button variant="danger" size="md" full={false} disabled={!why} onClick={() => { setRep(r.id, { status: 'rejected' }); setReject(false); done(`${r.room} closed`, 'The student was told why') }}>Close it</Button><Button variant="secondary" size="md" full={false} onClick={() => setReject(false)}>Cancel</Button></>}>
-        <p className="text-[16px] text-mid">The student gets your reason. Pick one:</p>
-        <div className="mt-4 flex flex-wrap gap-2">{['Already fixed', 'Not hostel property', 'Needs the warden, not IWD', 'Duplicate'].map(x => <Chip key={x} tone="canal" on={why === x} onClick={() => setWhy(x)}>{x}</Chip>)}</div>
-      </Dialog>
-    </Page>
-  )
+  const { nav, setModal } = useApp()
+  const rows = store.use(x => x.rows)
+  const r: Row = rows.find(x => x.id === P(nav, 'id', 'r1')) || rows[0] || NEW_ROW
+  const [who, setWho] = useState(0)
+  const finish = () => { fx.stamp(); done(r.id); nav.reset('check', { tr: 'none' }) }
+  return <Fig s={S.review} binds={B(
+    txt(1011, `${r.room} · Block ${r.block} · sent ${r.age.replace(/^1d ago$/, 'yesterday').replace(/(\d+)h ago/, '$1 hours ago').replace(/(\d+)d ago/, '$1 days ago')}`),
+    r.photo ? { '232:1012': { art: r.photo === 'chair' ? '232:2013' : undefined, wrap: place(0.1) } } : hide(1012, 1025),
+    r.photo === 'chair' ? { '232:1025': { text: `${r.item}, ${r.room}`, dy: -50 } } : txt(1025, `${r.item}, ${r.room}`),
+    r.photo ? { '232:1026': { wrap: slap(0.4) } } : { '232:1026': { wrap: slap(0.25), dy: -344 }, '232:1031': { dy: -344 } },
+    txt(1031, r.quote),
+    r.dup ? { '232:1034': { wrap: place(0.55) } } : hide(1032, 1033, 1034, 1038, 1039, 1040, 1041, 1042),
+    btn(1040, () => setModal({ kind: 'merge', rowId: r.id }), 'Merge'),
+    ...CHIPS.map(([c, name], i) => ({ [c]: { onClick: () => { fx.select(); setWho(i) }, label: 'Assign to ' + name, style: { background: who === i ? '#FFD265' : '#FFFBF3' } } })),
+    { '232:1046': { wrap: pop(0.7) }, '232:1050': { wrap: pop(0.75) }, '232:1057': { wrap: pop(0.8) }, '232:1061': { wrap: pop(0.85) }, '232:1065': { wrap: pop(0.9) }, '232:1072': { wrap: pop(0.95) } },
+    btn(1078, finish, 'Accept and assign'),
+    { '232:1080': { onClick: () => { fx.tap(); done(r.id); nav.reset('check', { tr: 'none' }) } } },
+  )} />
 }
+export const mergeBinds = (close: () => void, nav: NavApi<Screen>, rowId?: string): Binds => B(
+  { '232:1183': { style: { animation: 'figfade .2s ease both' } } },
+  { '232:1193': { wrap: place(0.15) }, '232:1199': { wrap: place(0.3) }, '232:1205': { wrap: rev('x', 0.45, 0.5) } },
+  btn(1189, () => { fx.stamp(); if (rowId) done(rowId); close(); nav.reset('check', { tr: 'none' }) }, 'Merge'),
+  btn(1191, close, 'Keep separate'),
+)
 
-/* ------------------------------ Closure review ------------------------------ */
+/* ================= Closure review ================= */
+const PROG = ['232:1290', '232:1296', '232:1300', '232:1304', '232:1308', '232:1312']
 export function Closure() {
-  const { nav, toast } = useApp()
-  const reps = store.use(s => s.reps)
-  const queue = reps.filter(r => r.status === 'closure')
-  const r = reps.find(x => x.id === nav.params.id && x.status === 'closure') || queue[0]
-  const [stamp, setStamp] = useState(0)
-  if (!r) return <Page back title="All closures signed off"><div className="flex flex-col items-center py-16"><Mark tone="green"><CircleCheck size={26} /></Mark><p className="mt-4 text-[16px] text-mid">Nothing left to sign off. Good evening's work.</p><Button className="mt-6" variant="primary" size="md" full={false} onClick={() => nav.reset('home', { tr: 'swap' })}>Back to home</Button></div></Page>
-  const idx = queue.findIndex(x => x.id === r.id)
-  const accept = () => {
-    setStamp(s => s + 1)
-    setTimeout(() => { setRep(r.id, { status: 'closed' }); const nx = queue[idx + 1] || queue.find(x => x.id !== r.id); toast({ kind: 'bar', title: `${r.room} signed off`, icon: <CircleCheck size={20} /> }); if (nx) nav.replace('closure', { tr: 'swap', p: { id: nx.id } }); else nav.reset('check', { tr: 'swap' }) }, 900)
-  }
-  const checks: [string, boolean][] = [[r.closedBy === 'code' ? "Closed with the student's code" : 'Closed with a photo, no code (shared space)', r.closedBy === 'code'], ['Student said: fixed', r.closedBy === 'code'], ['After photo attached', true]]
-  return (
-    <Page back title="Closure review" sub={`${r.room} · ${r.item} · closed by ${techName(r.tech)}`} right={<span className="flex items-center gap-2 font-mono text-[15px] text-mid">{queue.map((q, i) => <Dot key={q.id} tone={i < idx ? 'green' : i === idx ? 'sun' : 'faint'} />)}<span className="ml-1">{idx + 1} of {queue.length}</span></span>}>
-      <div className="grid grid-cols-[1fr_360px] gap-12">
-        <div className="relative flex items-start gap-6">
-          <ArtIn><Photo n={r.item === 'Chair' ? 'photo-chair' : 'photo-fan'} cap="before" /></ArtIn>
-          <ArtIn delay={0.1}><Photo n={r.item === 'Chair' ? 'photo-chair-after' : 'photo-fan'} cap="after" /></ArtIn>
-          <AnimatePresence>{stamp > 0 && <Stamp key={stamp} delay={0} onLand={fx.stamp} className="absolute left-[200px] top-[60px]"><div className="flex h-[120px] w-[120px] flex-col items-center justify-center rounded-full border-4 border-green bg-paper/80 text-green"><CheckIcon size={40} strokeWidth={3.5} /><span className="font-head text-[17px] font-bold tracking-[0.14em]">SIGNED</span></div></Stamp>}</AnimatePresence>
-        </div>
-        <div>
-          <H2>What {techName(r.tech).split(' ')[0]} did</H2>
-          <p className="text-[15px] leading-relaxed">{r.fix}</p>
-          <div className="mt-5 flex flex-col gap-3">{checks.map(([t, ok], i) => <Rise key={t} delay={0.1 + i * 0.06} className="flex items-center gap-3 text-[14px] font-medium"><span className={cx('flex h-6 w-6 items-center justify-center rounded-full', ok ? 'bg-green2 text-green' : 'bg-sun2 text-navy')}>{ok ? <CheckIcon size={14} strokeWidth={2.8} /> : <Eye size={14} />}</span>{t}</Rise>)}</div>
-          <div className="mt-8 flex items-center gap-3"><Button variant="primary" size="md" full={false} icon={<CheckIcon size={17} strokeWidth={2.6} />} sound={false} onClick={accept}>Sign off</Button><Button variant="ghost" size="md" full={false} className="!text-brick" icon={<RotateCcw size={18} />} onClick={() => { setRep(r.id, { status: 'assigned' }); toast({ kind: 'bar', title: `${r.room} sent back to ${techName(r.tech)}`, icon: <RotateCcw size={18} /> }); nav.back({ tr: 'swap' }) }}>Send back</Button></div>
-        </div>
-      </div>
-    </Page>
-  )
+  const { nav } = useApp()
+  const at = Math.min(store.use(x => x.closureAt), CLOSURES.length - 1)
+  const c = CLOSURES[at]
+  const next = () => { fx.stamp(); if (at + 1 >= CLOSURES.length) { store.set({ closureAt: CLOSURES.length }); nav.reset('check', { tr: 'none' }) } else store.set({ closureAt: at + 1 }) }
+  return <Fig key={at} s={S.closure} binds={B(
+    txt(1239, `${c.room} · Block ${c.block} · closed ${c.when} by ${c.tech}`), txt(1269, `What ${c.tech} did`), txt(1271, c.did), txt(1316, `closure ${at + 1} of ${CLOSURES.length}`),
+    { '232:1240': { wrap: place(0.1) }, '232:1254': { wrap: place(0.35) } },
+    { '232:1272': { wrap: pop(0.7, fx.check) }, '232:1277': { wrap: pop(0.85, fx.check) }, '232:1282': { wrap: pop(1.0, fx.check) } },
+    ...PROG.map((p, k) => ({ [p]: { art: k === at ? '232:1290' : k === 0 ? '232:1296' : undefined } })),
+    btn(1287, next, 'Accept closure'),
+    { '232:1289': { onClick: () => { fx.tap(); next() } } },
+  )} />
 }
 
-/* ------------------------------ Forecast ------------------------------ */
+/* ================= Load forecast ================= */
 export function Forecast() {
-  const { toast } = useApp()
-  const moved = store.use(s => s.forecastMoved)
-  const [trade, setTrade] = useState<'all' | Trade>('all')
-  const base: [string, number][] = [['Sat', 7], ['Sun', 6], ['Mon', 7], ['Tue', 12], ['Wed', 9], ['Thu', 6], ['Fri', 7]]
-  const data = base.map(([d, n]) => [d, trade === 'all' ? n : Math.max(1, Math.round(n * ({ Electrical: 0.45, Plumbing: 0.3, Carpentry: 0.2, Civil: 0.05 } as Record<Trade, number>)[trade]))] as [string, number])
-  if (moved && trade === 'all') { data[2][1] = 9; data[3][1] = 10 }
-  const cap = trade === 'all' ? 9 : 4
-  return (
-    <Page title="Load forecast" sub="The next seven days: work expected against what your technicians can do. Based on the last 8 weeks and the monsoon pattern."
-      right={<Segmented tone="canal" value={trade} onChange={setTrade} options={[{ v: 'all', label: 'All' }, { v: 'Electrical', label: 'Electrical' }, { v: 'Plumbing', label: 'Plumbing' }, { v: 'Carpentry', label: 'Carpentry' }]} />}>
-      <div className="relative flex h-[360px] items-end justify-around rounded-[12px] border border-line bg-paper px-8 pb-12 pt-6 shadow-desk">
-        <motion.div className="absolute left-6 right-6 border-t-[1.5px] border-dashed border-brick" animate={{ bottom: 48 + cap * 20 }} transition={spring}><span className="absolute -top-6 right-0 text-[12px] font-medium text-brick">what {trade === 'all' ? '4 technicians' : `your ${trade.toLowerCase()} team`} can do</span></motion.div>
-        {data.map(([d, n], i) => (
-          <div key={d} className="relative flex flex-col items-center">
-            <div className="flex flex-col-reverse gap-1.5">{Array.from({ length: n }, (_, k) => <motion.span key={`${trade}${k}`} className="block" layout initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1], delay: i * 0.03 + k * 0.015 }}><Dot size={14} tone={k >= cap ? 'brick' : 'navy'} /></motion.span>)}</div>
-            <span className={cx('absolute -bottom-9 text-[13px] font-medium text-mid', d === 'Tue' && !moved && '!text-brick')}>{d}</span>
-          </div>
-        ))}
-      </div>
-      <AnimatePresence mode="wait">
-        {!moved ? (
-          <Drop key="s" className="mt-8">
-            <div className="flex items-center gap-5 rounded-[12px] border border-sun3 bg-sun2 p-5">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sun"><Sparkles size={20} /></span>
-              <p className="flex-1 text-[15px]"><b>Tuesday has 3 jobs too many.</b> Moving the two non-urgent carpentry jobs to Monday keeps every promise.</p>
-              <Button variant="primary" size="md" full={false} onClick={() => { store.set({ forecastMoved: true }); fx.success(); toast({ kind: 'bar', title: 'Two jobs moved to Monday', body: 'Students were told', action: { label: 'Undo', run: () => store.set({ forecastMoved: false }) } }) }}>Move two to Monday</Button>
-              <Button variant="ghost" size="md" full={false}>Leave it</Button>
-            </div>
-          </Drop>
-        ) : <Rise key="d" className="mt-8 flex items-center gap-3 text-[15px] font-semibold text-green"><CircleCheck />Every day is within capacity now.</Rise>}
-      </AnimatePresence>
-    </Page>
-  )
+  const moved = store.use(x => x.moved), left = store.use(x => x.leftAlone)
+  const s = S.forecast
+  const dots = arts(s, n => n.n === 'dot')
+  const cols = [...new Set(dots.map(d => d.x))].sort((a, b) => a - b)
+  const r = useReducedMotion()
+  const settled = moved || left
+  return <Fig s={s} binds={B(
+    wrapAll(dots, n => (n.i === '232:1518' || n.i === '232:1514')
+      ? (el: ReactNode) => <Drop delay={0.15 + cols.indexOf(n.x) * 0.1 + (568 - n.y) / 24 * 0.035}><motion.div animate={{ x: moved ? -158 : 0 }} transition={r ? { duration: 0 } : { type: 'spring', stiffness: 140, damping: 18 }}>{el}</motion.div></Drop>
+      : drop(0.15 + cols.indexOf(n.x) * 0.1 + (568 - n.y) / 24 * 0.035)),
+    { '232:1631': { wrap: rev('x', 1.0, 1.0) }, '232:1635': { wrap: rev('x', 1.5, 0.6) }, '232:1637': { wrap: slap(1.2) } },
+    moved ? B(txt(1522, '+2 over', { top: 260 }), txt(1464, '+4 over', { top: 212 }), txt(1634, 'Tuesday is fine now', { color: '#3E4F72' })) : {},
+    moved ? txt(1642, 'Done. Two Tuesday jobs now go on Monday, inside their promise.') : left ? txt(1642, 'Okay. Tuesday stays as it is. ALIGN will warn the team on Monday night.') : {},
+    btn(1643, () => { fx.success(); store.set({ moved: true }) }, 'Move two to Monday'),
+    { '232:1645': { onClick: () => { fx.tap(); store.set({ leftAlone: true }) } } },
+    settled ? hide(1643, 1644, 1645, 1647) : {},
+  )} />
 }
 
-/* ------------------------------ Blocked ------------------------------ */
+/* ================= Blocked ================= */
+const BL = [[1681, 1685, 1686, 1687, 1688], [1691, 1695, 1696, 1697, 1698], [1701, 1705, 1706, 1707, 1708], [1711, 1715, 1716, 1717, 1718]]
 export function Blocked() {
   const { nav } = useApp()
-  const list = store.use(s => s.reps).filter(r => r.status === 'blocked').sort((a, b) => (a.blockedSince || 0) - (b.blockedSince || 0))
-  return (
-    <Page title="Blocked" sub="Jobs that cannot move until something outside the team changes. Click one for the whole story.">
-      <div className="flex flex-col gap-3">
-        {list.map((r, i) => (
-          <Rise key={r.id} delay={i * 0.05}>
-            <Card variant="outline" onClick={() => nav.go('blockedOne', { tr: 'swap', p: { id: r.id } })} className="relative flex items-center gap-5 overflow-hidden p-5">{i === 0 && <span className="absolute bottom-0 left-0 top-0 w-[3px] bg-brick" />}
-              <Dot tone="brick" size={14} /><span className="w-28 font-mono text-[15px] font-medium">{r.room}</span>
-              <span className="flex-1"><span className="block text-[16px] font-semibold">{r.item}</span><span className="text-[14px] text-mid">{r.blockedWhy}</span></span>
-              <span className="text-right"><span className={cx('block font-head text-[26px] font-bold leading-none tabular', ageDays(r.blockedSince || r.at) > store.get().promise ? 'text-brick' : 'text-navy')}>{ageDays(r.blockedSince || r.at)}d</span><span className="text-[13px] text-mid">blocked</span></span>
-              <ChevronRight className="text-faint" />
-            </Card>
-          </Rise>
-        ))}
-        {!list.length && <div className="flex flex-col items-center py-16 text-center"><Mark tone="green"><CircleCheck size={26} /></Mark><p className="mt-3 text-[16px] text-mid">Nothing is blocked.</p></div>}
-      </div>
-    </Page>
-  )
+  const [hov, setHov] = useState(0)
+  return <Fig s={S.blocked} binds={B(
+    { '232:1680': { dy: hov * 120, style: { transition: 'top .18s cubic-bezier(.22,1,.36,1)' } } },
+    { '232:1685': { style: { left: 216 } } },
+    ...BL.map((r, j) => ({ [id(r[0])]: { wrap: pop(0.15 + j * 0.1) } })),
+  )} extra={BLOCKED.map((b, j) => (
+    <button key={j} type="button" aria-label={`Room ${b.room} · ${b.title}`} onMouseEnter={() => setHov(j)} onFocus={() => setHov(j)}
+      onClick={() => { fx.tap(); nav.go('blockedOne', { tr: 'none', p: { i: j } }) }}
+      style={{ position: 'absolute', left: 140, top: 194 + 120 * j, width: 1210, height: 92, background: 'transparent', border: 0, cursor: 'pointer', borderRadius: 16 }} />
+  ))} />
 }
-
 export function BlockedOne() {
-  const { nav, toast } = useApp()
-  const reps = store.use(s => s.reps)
-  const r = reps.find(x => x.id === nav.params.id) || reps.find(x => x.status === 'blocked') || reps[0]
-  const [esc, setEsc] = useState(false); const [to, setTo] = useState('Warden'); const [line, setLine] = useState('')
-  const story = [['6 days ago', 'Reported by the warden'], ['5 days ago', `${techName(r.tech)} visited. The motor is burnt out.`], ['5 days ago', 'Not in stock at the IWD store'], ['4 days ago', 'Purchase request sent to Estate & Works'], ['2 days ago', 'ElectroServe quoted ₹8,400. Waiting for approval.']]
-  return (
-    <Page back title={`${r.room} · ${r.item}`} sub={`Blocked ${ageDays(r.blockedSince || r.at)} days · Block ${r.block} · ${r.blockedWhy}`}>
-      <div className="grid grid-cols-[1fr_380px] gap-12">
-        <ol className="relative ml-3 border-l border-line pl-8">
-          {story.map(([d, t], i) => (
-            <Rise key={t} delay={i * 0.06} className="relative mb-6 last:mb-0">
-              <span className={cx('absolute -left-[39px] top-1 flex h-3.5 w-3.5 rounded-full border-[1.5px]', i === story.length - 1 ? 'border-brick bg-brick' : 'border-navy bg-paper')} />
-              <div className="font-mono text-[13px] text-mid">{d}</div><div className={cx('text-[15px]', i === story.length - 1 && 'font-semibold')}>{t}</div>
-            </Rise>
-          ))}
-          <Rise delay={0.4} className="mt-6 text-[14px] text-mid">Students in Block {r.block} have been told: waiting on a part.</Rise>
-        </ol>
-        <div>
-          <H2>Needs you</H2>
-          <Sticky who="Next step">Approve the purchase, or call the vendor to move it faster.</Sticky>
-          <div className="mt-5 flex flex-wrap gap-3"><Button variant="primary" size="md" full={false} icon={<ShieldAlert size={17} />} onClick={() => setEsc(true)}>Escalate</Button><Button variant="secondary" size="md" full={false} icon={<Phone size={18} />} onClick={() => toast({ kind: 'bar', title: 'Calling ElectroServe…', body: '+91 1332 27••••' })}>Call vendor</Button></div>
-        </div>
-      </div>
-      <Dialog open={esc} onClose={() => setEsc(false)} title={`Escalate ${r.room}?`}
-        footer={<><Button variant="primary" size="md" full={false} icon={<Send size={18} />} onClick={() => { setEsc(false); fx.success(); toast({ kind: 'bar', title: `Escalated to the ${to.toLowerCase()}`, body: 'Quote and timeline attached', icon: <ShieldAlert size={18} /> }) }}>Escalate</Button><Button variant="secondary" size="md" full={false} onClick={() => setEsc(false)}>Cancel</Button></>}>
-        <p className="text-[16px] text-mid">They get a message with the quote and the timeline. You stay on the job.</p>
-        <div className="mt-4 grid grid-cols-2 gap-3">{['Warden', 'Estate office'].map(x => <Choice key={x} tone="canal" layout="row" on={to === x} onClick={() => setTo(x)} title={x} sub={x === 'Warden' ? 'Prof. in charge, Himalaya' : 'Estate & Works, IWD'} />)}</div>
-        <TextArea className="mt-4" label="Add a line for them (optional)" value={line} onChange={e => setLine(e.target.value)} placeholder="The pump serves 120 students. Two floors have no water pressure." />
-      </Dialog>
-    </Page>
-  )
+  const { nav, setModal } = useApp()
+  const i = P(nav, 'i', 0)
+  const b = BLOCKED[i]
+  const esc = store.use(x => x.escalated.includes(i))
+  const [called, setCalled] = useState(false)
+  return <Fig s={S.blockedOne} binds={B(
+    txt(1751, `Room ${b.room} · ${b.title}`), txt(1752, b.sub),
+    i ? txt(1779, `${b.why}.`) : {},
+    { '232:1753': { wrap: rev('y', 0.1, 1.1) } },
+    ...['1755', '1760', '1765', '1770', '1775'].map((n, k) => ({ [id(n)]: { wrap: pop(0.2 + k * 0.18) } })),
+    { '232:1783': { wrap: slap(0.6) } },
+    btn(1789, () => setModal({ kind: 'escalate', i }), 'Escalate'),
+    btn(1791, () => setModal({ kind: 'reassign', i, from: 'blocked' }), 'Reassign'),
+    btn(1793, () => { fx.success(); setCalled(true) }, 'Call ElectroServe'),
+    called ? txt(1794, 'Called just now') : {},
+    esc ? txt(1795, 'escalated to the warden · you stay on the job') : {},
+  )} />
 }
+export const escalateBinds = (close: () => void, i: number, who: number, setWho: (n: number) => void, note: string, setNote: (s: string) => void): Binds => B(
+  { '234:377': { style: { animation: 'figfade .2s ease both' } } },
+  txt('234:381', `Escalate Room ${BLOCKED[i].room}?`),
+  { '234:383': { onClick: () => { fx.select(); setWho(0) }, label: 'Warden', style: { background: who === 0 ? '#FFD265' : '#FFFBF3' } } },
+  { '234:385': { onClick: () => { fx.select(); setWho(1) }, label: 'Estate office', style: { background: who === 1 ? '#FFD265' : '#FFFBF3' } } },
+  field('234:387', note, setNote, { width: 516, placeholder: 'Add a line for them' }),
+  btn('234:389', () => { fx.stamp(); store.set(s => ({ escalated: [...s.escalated, i] })); close() }, 'Escalate'),
+  btn('234:391', close, 'Cancel'),
+)
 
-/* ------------------------------ Disputes ------------------------------ */
+/* ================= Disputes ================= */
+const DS = [
+  [1921, 1922, 1923, 1927, 1928, 1929, 1933, 1934, 1935, 1936, 1937, 1938],
+  [1939, 1940, 1941, 1945, 1946, 1947, 1951, 1952, 1953, 1954, 1955, 1956],
+  [1957, 1958, 1959, 1963, 1964, 1965, 1969, 1970, 1971, 1972, 1973, 0],
+]
 export function Disputes() {
   const { nav } = useApp()
-  const list = store.use(s => s.reps).filter(r => r.status === 'disputed')
-  return (
-    <Page title="Disputes" sub="A student and a technician disagree about a closed job. You decide.">
-      <div className="flex flex-col gap-4">
-        {list.map((r, i) => (
-          <Rise key={r.id} delay={i * 0.06}>
-            <div className="grid grid-cols-[140px_1fr_1fr_140px] items-center gap-6 rounded-[12px] border border-line bg-paper p-5 shadow-desk">
-              <div><div className="font-mono text-[16px] font-medium">{r.room}</div><div className="text-[14px] text-mid">{r.item} · {ageText(r.at)}</div></div>
-              <Sticky who={`Student · ${r.student.split(' ')[0]}`}>"{r.studentSays}"</Sticky>
-              <Sticky tone="sky" who={techName(r.tech)}>"{r.techSays}"</Sticky>
-              <Button variant={i === 0 ? 'primary' : 'secondary'} size="md" iconRight={<ArrowRight size={16} />} onClick={() => nav.go('disputeOne', { tr: 'swap', p: { id: r.id } })}>Decide</Button>
-            </div>
-          </Rise>
-        ))}
-        {!list.length && <div className="flex flex-col items-center py-16 text-center"><Mark tone="green"><CircleCheck size={26} /></Mark><p className="mt-3 text-[16px] text-mid">No disputes right now.</p></div>}
-      </div>
-    </Page>
-  )
+  const left = store.use(x => x.disputesLeft)
+  const binds: Binds[] = []
+  DS.forEach((sl, j) => {
+    const k = left[j]
+    if (k === undefined) { binds.push(hide(...sl.filter(Boolean))); if (j > 0) binds.push(hide(DS[j - 1][11] || 0)); return }
+    const d = DISPUTES[k]
+    binds.push(txt(sl[0], d.room), txt(sl[1], d.item), txt(sl[4], d.student), txt(sl[6], d.tech), txt(sl[7], d.techSays), txt(sl[10], d.open),
+      { [id(sl[2])]: { wrap: place(0.1 + j * 0.12) }, [id(sl[5])]: { wrap: place(0.18 + j * 0.12) } },
+      btn(sl[8], () => nav.go('disputeOne', { tr: 'none', p: { i: k } }), 'Open ' + d.room))
+  })
+  return <Fig s={S.disputes} binds={B(...binds)} />
 }
-
 export function DisputeOne() {
-  const { nav, toast } = useApp()
-  const reps = store.use(s => s.reps)
-  const r = reps.find(x => x.id === nav.params.id) || reps.find(x => x.status === 'disputed') || reps[0]
-  const [re, setRe] = useState(false); const [tech, setTech] = useState(TEAM.find(t => t.trade === r.trade && t.id !== r.tech)?.id || 't4')
-  const decide = (status: Rep['status'], msg: string) => { setRep(r.id, { status }); fx.success(); toast({ kind: 'bar', title: msg, icon: <CircleCheck size={20} /> }); nav.reset('disputes', { tr: 'swap' }) }
-  return (
-    <Page back title={`${r.room} · ${r.item}`} sub={`The student says it is not fixed. ${techName(r.tech).split(' ')[0]} says it is.`}>
-      <div className="grid grid-cols-[1fr_1fr_280px] gap-8">
-        <div><H2>Student says</H2><Sticky who={r.student}>"{r.studentSays}"</Sticky><div className="mt-5"><Photo n={r.photo || 'photo-chair'} cap="sent after the closure" w={280} /></div></div>
-        <div><H2>{techName(r.tech).split(' ')[0]} says</H2><Sticky tone="sky" who={techName(r.tech)}>"{r.techSays}"</Sticky><div className="mt-5"><Photo n={r.item === 'Chair' ? 'photo-chair-after' : 'photo-fan'} cap="after photo · 8:41 PM" w={280} /></div></div>
-        <div>
-          <H2>Your call</H2>
-          <div className="flex flex-col gap-3">
-            <Button variant="primary" size="md" icon={<RotateCcw size={17} />} onClick={() => decide('assigned', `${r.room} reopened`)}>Reopen the job</Button>
-            <Button variant="secondary" size="md" icon={<Users size={18} />} onClick={() => setRe(true)}>Send someone else</Button>
-            <Button variant="secondary" size="md" icon={<CheckIcon size={18} />} onClick={() => decide('closed', 'Closure upheld · student told why')}>Uphold the closure</Button>
-          </div>
-          <p className="mt-4 text-[13px] text-mid">The student's photo came 3 hours after the closure.</p>
-        </div>
-      </div>
-      <Dialog open={re} onClose={() => setRe(false)} title={`Who should go to ${r.room}?`}
-        footer={<><Button variant="primary" size="md" full={false} onClick={() => { setRe(false); decide('assigned', `${r.room} reassigned to ${techName(tech)}`) }}>Reassign</Button><Button variant="secondary" size="md" full={false} onClick={() => setRe(false)}>Cancel</Button></>}>
-        <p className="text-[16px] text-mid">The student is told a new person is coming.</p>
-        <div className="mt-4 flex flex-col gap-2.5">{TEAM.filter(t => t.on).map(t => <Choice key={t.id} tone="canal" layout="row" on={tech === t.id} onClick={() => setTech(t.id)} title={t.name} sub={`${t.trade} · ${t.today} jobs today · free from ${t.today > 3 ? '9:00' : '7:30'} PM`} />)}</div>
-      </Dialog>
-    </Page>
-  )
+  const { nav, setModal } = useApp()
+  const i = P(nav, 'i', 0)
+  const d = DISPUTES[i]
+  const settle = () => { fx.stamp(); store.set(s => ({ disputesLeft: s.disputesLeft.filter(x => x !== i) })); nav.reset('disputes', { tr: 'none' }) }
+  return <Fig s={S.disputeOne} binds={B(
+    txt(2004, `${d.room} · ${d.item}`), txt(2005, `The student says it is not fixed. ${d.tech} says it is.`), txt(2024, `${d.tech} says`),
+    txt(2012, d.student), txt(2030, d.techSays),
+    { '232:2007': { wrap: slap(0.2) }, '232:2025': { wrap: slap(0.4) } },
+    i === 0 ? { '232:2013': { wrap: place(0.55) }, '232:2031': { wrap: place(0.7) } } : hide(2013, 2023, 2031, 2040, 2049),
+    btn(2043, settle, 'Reopen the job'), btn(2045, settle, 'Uphold the closure'),
+    btn(2047, () => setModal({ kind: 'reassign', i, from: 'dispute' }), 'Reassign'),
+  )} />
 }
+const PICK = ['2 jobs today. Free from 9:30 PM.', 'Most jobs today. Free from 10 PM.', 'Fewest jobs today. Free from 7:30 PM.']
+export const reassignBinds = (close: () => void, m: NonNullable<Modal>, who: number, setWho: (n: number) => void, nav: NavApi<Screen>): Binds => B(
+  { '234:469': { style: { animation: 'figfade .2s ease both' } } },
+  txt('234:473', `Reassign ${m.from === 'blocked' ? 'Room ' + BLOCKED[m.i || 0].room : DISPUTES[m.i || 0].room}?`),
+  ...[['234:475', 'Ravi'], ['234:486', 'Imran'], ['234:501', 'Deepak']].map(([c, name], k) => ({ [c]: { onClick: () => { fx.select(); setWho(k) }, label: name, style: { background: who === k ? '#FFD265' : '#FFFBF3' } } })),
+  txt('234:508', PICK[who]),
+  btn('234:509', () => {
+    fx.stamp(); close()
+    if (m.from === 'dispute') { store.set(s => ({ disputesLeft: s.disputesLeft.filter(x => x !== m.i) })); nav.reset('disputes', { tr: 'none' }) }
+  }, 'Reassign'),
+  btn('234:511', close, 'Cancel'),
+)
 
-/* ------------------------------ Fixtures ------------------------------ */
+/* ================= Fixtures ================= */
+const FX = [
+  [2204, 2205, 2206, [2207, 2210, 2213], 2217], [2220, 2221, 2222, [2223, 2226, 2229], 2233], [2236, 2237, 2238, [2239, 2242], 2246],
+  [2249, 2250, 2251, [2252, 2255], 2259], [2262, 2263, 2264, [2265, 2268], 2272],
+] as const
 export function Fixtures() {
   const { nav } = useApp()
-  return (
-    <Page title="Repeat fixtures" sub="Things that keep breaking, most worrying first. Fixing the cause saves trips.">
-      <div className="overflow-hidden rounded-[12px] border border-line bg-paper shadow-desk">
-        {FIXTURES.map((f, i) => (
-          <Rise key={f.id} delay={i * 0.04}>
-            <button onClick={() => { fx.tap(); nav.go('fixtureOne', { tr: 'swap', p: { id: f.id } }) }} className="group flex w-full items-center gap-6 border-b border-rule px-6 py-4 text-left hover:bg-cream">
-              <span className="w-32 font-mono text-[15px] font-medium">{f.room}</span>
-              <span className="flex-1"><span className="block text-[15px] font-semibold">{f.item}</span><span className="text-[13px] text-mid">{f.n} repairs in {f.months} months · last {f.last}</span></span>
-              <span className="flex gap-1.5">{Array.from({ length: f.n }, (_, k) => <Dot key={k} size={14} tone={f.worth ? 'brick' : 'navy'} />)}</span>
-              {f.worth ? <Tag tone="danger">Worth replacing?</Tag> : <span className="w-[130px]" />}
-              <ChevronRight className="text-faint transition-transform group-hover:translate-x-1" />
-            </button>
-          </Rise>
-        ))}
-      </div>
-    </Page>
-  )
+  return <Fig s={S.fixtures} binds={B(...FX.map((f, j) => B(
+    ...f[3].map((r, k) => ({ [id(r)]: { wrap: pop(0.2 + j * 0.1 + k * 0.08) } })),
+    btn(f[4], () => nav.go('fixtureOne', { tr: 'none', p: { i: j } }), 'Open ' + FIXTURES[j].room),
+  )))} />
 }
 export function FixtureOne() {
-  const { nav, toast } = useApp()
-  const f = FIXTURES.find(x => x.id === nav.params.id) || FIXTURES[0]
-  return (
-    <Page back title={`${f.room} · ${f.item}`} sub={`${f.n} repairs in ${f.months} months`}>
-      <div className="grid grid-cols-[1fr_380px] gap-12">
-        <ol className="relative ml-3 border-l border-line pl-8">{f.log.map(([d, t, w], i) => <Rise key={d} delay={i * 0.06} className="relative mb-6"><span className="absolute -left-[39px] top-1 h-3.5 w-3.5 rounded-full border-[1.5px] border-navy bg-sun" /><div className="font-mono text-[13px] text-mid">{d}</div><div className="text-[15px] font-semibold">{t}</div><div className="text-[14px] text-mid">by {w}</div></Rise>)}</ol>
-        <div>
-          <Sticky who="Pattern spotted">The same part failed {f.n - 1} times in {f.months} months. The {f.item.toLowerCase()} itself may be the problem.</Sticky>
-          <div className="mt-5 flex gap-3"><Button variant="primary" size="md" full={false} icon={<Wrench size={17} />} onClick={() => toast({ kind: 'bar', title: 'Replacement suggested to Estate & Works', icon: <CircleCheck size={20} /> })}>Suggest replacing it</Button><Button variant="ghost" size="md" full={false}>Keep watching</Button></div>
-        </div>
-      </div>
-    </Page>
-  )
+  const { nav } = useApp()
+  const i = P(nav, 'i', 0)
+  const f = FIXTURES[i]
+  const sugg = store.use(x => x.replaceSuggested.includes(i))
+  return <Fig s={S.fixtureOne} binds={B(
+    txt(2304, `${f.room} · ${f.item}`), txt(2305, f.sub),
+    { '232:2306': { wrap: rev('y', 0.1, 1.0) }, '232:2308': { wrap: pop(0.25) }, '232:2313': { wrap: pop(0.45) }, '232:2318': { wrap: pop(0.65) }, '232:2323': { wrap: slap(0.5) } },
+    i ? txt(2331, `Suggest replacing the ${f.item.toLowerCase()}`) : {},
+    btn(2330, () => { if (!sugg) { fx.success(); store.set(s => ({ replaceSuggested: [...s.replaceSuggested, i] })) } }, 'Suggest replacing'),
+    { '232:2332': { onClick: () => { fx.tap(); nav.back({ tr: 'none' }) } } },
+    sugg ? B(txt(2331, 'Sent to the estate office'), hide(2332, 2334)) : {},
+  )} />
 }
 
-/* ------------------------------ Team ------------------------------ */
+/* ================= Team, Technician, Rules ================= */
 export function Team() {
   const { nav } = useApp()
-  const hours = [17, 18, 19, 20, 21, 22]
-  return (
-    <Page title="Team" sub="Your technicians on tonight's shift, 5 PM to 10 PM. Click a name for their day." right={<Button variant="secondary" size="sm" full={false} icon={<SlidersIcon />} onClick={() => nav.go('rules', { tr: 'swap' })}>Rules</Button>}>
-      <div className="rounded-[12px] border border-line bg-paper p-6 shadow-desk">
-        <div className="ml-[220px] grid grid-cols-6 border-b border-rule pb-2 text-[12px] font-medium text-mid">{hours.map(h => <span key={h}>{h - 12} PM</span>)}</div>
-        {TEAM.map((t, i) => (
-          <Rise key={t.id} delay={i * 0.05}>
-            <button onClick={() => { fx.tap(); nav.go('tech', { tr: 'swap', p: { id: t.id } }) }} className="group mt-3 flex w-full items-center text-left">
-              <span className="flex w-[220px] items-center gap-3"><Avatar name={t.name} size={40} tone={t.on ? 'sky' : 'sand'} /><span><span className="block text-[15px] font-semibold group-hover:underline">{t.name}</span><span className="text-[13px] text-mid">{t.trade} · {t.on ? `${t.today}/${t.cap}` : 'off today'}</span></span></span>
-              <span className="relative h-10 flex-1 rounded-[8px] bg-[repeating-linear-gradient(90deg,#F6F0E3_0,#F6F0E3_calc(100%/6_-_1px),#ECE6D9_calc(100%/6_-_1px),#ECE6D9_calc(100%/6))]">
-                {t.jobs.map(([s, d, room], k) => (
-                  <div key={k} className="absolute top-1.5 bottom-1.5" style={{ left: `${((s - 17) / 6) * 100}%`, width: `max(${(d / 6) * 100}%, 58px)` }}>
-                    <Tooltip label={`${room} · ${Math.floor(s - 12)}:${s % 1 ? '30' : '00'} PM`} className="h-full w-full">
-                      <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ ...spring, delay: 0.2 + i * 0.05 + k * 0.04 }} className="block h-full w-full origin-left truncate rounded-[6px] border border-canal/30 bg-canal2 px-2 font-mono text-[12px] leading-[26px] text-canal">{room}</motion.span>
-                    </Tooltip>
-                  </div>
-                ))}
-              </span>
-            </button>
-          </Rise>
-        ))}
-      </div>
-    </Page>
-  )
+  const s = S.team
+  const bookings = (s.k || []).filter(n => n.n === 'booking')
+  const labels = (s.k || []).filter(n => n.t === 'TEX' && n.fn?.startsWith('DM Mono') && n.y > 250 && n.y < 700)
+  const delayOf = (y: number) => 0.3 + Math.floor((y - 250) / 130) * 0.12
+  return <Fig s={s} binds={B(
+    ...['2373', '2386', '2397', '2408'].map((n, k) => ({ [id(n)]: { onClick: () => { fx.tap(); nav.go('tech', { tr: 'none', p: { i: k } }) } } })),
+    { '232:2375': { wrap: rev('x', 0.1) }, '232:2388': { wrap: rev('x', 0.2) }, '232:2399': { wrap: rev('x', 0.3) }, '232:2410': { wrap: rev('x', 0.4) } },
+    ...bookings.map(n => ({ [n.i]: { style: bar(delayOf(n.y) + (n.x - 500) / 2400) } })),
+    ...labels.map(n => ({ [n.i]: { style: { animation: `figfade .3s ease ${delayOf(n.y) + (n.x - 500) / 2400 + 0.25}s both` } } })),
+    { '232:2416': { wrap: rev('y', 0.9, 0.8) } },
+    btn(2419, () => nav.go('rules', { tr: 'none' }), 'Notification rules'),
+  )} />
 }
-const SlidersIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></svg>
-
+const SHIFTS = ['5 to 10 PM', '2 to 7 PM', '9 AM to 2 PM']
+const BLOCKSETS = [['BG, F, C', 'A, B', 'C, D', 'D, E'], ['A, B, C', 'D, E', 'BG, F', 'C']]
 export function Tech() {
   const { nav } = useApp()
-  const t = TEAM.find(x => x.id === nav.params.id) || TEAM[0]
-  const jobs = store.use(s => s.reps).filter(r => r.tech === t.id)
-  return (
-    <Page back title={t.name} sub={`${t.trade} · IWD · Blocks ${t.blocks}`} right={<div className="flex items-center gap-3"><Stars value={Math.round(t.rating)} size={22} /><span className="font-head text-[22px] font-bold tabular">{t.rating}</span></div>}>
-      <KpiStrip cols={3}><Kpi i={0} n={t.today} label="Jobs tonight" sub={`of ${t.cap} he can do`} /><Kpi i={1} n={jobs.filter(r => r.status === 'closed' || r.status === 'closure').length + 18} label="Closed this month" sub="94% with the student's code" tone="green" /><Kpi i={2} n={jobs.filter(r => r.status === 'disputed').length} label="Open disputes" sub="Reopened by students" tone="brick" /></KpiStrip>
-      <H2 className="mt-10">His jobs in Himalaya</H2>
-      <div className="flex flex-col">{jobs.map(r => <div key={r.id} className="flex items-center gap-5 border-b border-rule py-3 text-[15px]"><span className="w-28 font-mono text-[14px]">{r.room}</span><span className="flex-1">{r.item} · {r.issue.toLowerCase()}</span><Tag tone={r.status === 'blocked' || r.status === 'disputed' ? 'danger' : r.status === 'closure' ? 'info' : 'neutral'}>{r.status}</Tag></div>)}</div>
-    </Page>
-  )
+  const i = P(nav, 'i', 0)
+  const shift = store.use(x => x.shift[i]), bs = store.use(x => x.blockSet[i])
+  const t = TEAM[i]
+  const blocks = bs ? BLOCKSETS[1][i] : t.blocks
+  const bump = (k: 'shift' | 'blockSet', n: number) => { fx.select(); store.set(s => ({ [k]: s[k].map((v, j) => (j === i ? (v + 1) % n : v)) })) }
+  return <Fig s={S.tech} binds={B(
+    txt(2452, t.name), txt(2453, `Shift ${SHIFTS[shift]} · Blocks ${blocks} · Hindi and English`),
+    i ? txt(2493, 'their phone shows Hindi big, English small') : {},
+    { '232:2456': { wrap: pop(0.2, fx.check) }, '232:2463': { wrap: pop(0.35, fx.check) }, '232:2470': { wrap: pop(0.5) }, '232:2476': { wrap: pop(0.65) } },
+    btn(2489, () => bump('blockSet', 2), 'Change blocks'), btn(2491, () => bump('shift', SHIFTS.length), 'Change shift'),
+  )} />
 }
-
-/* ------------------------------ Rules ------------------------------ */
+/* Rules: each highlighted word is tappable; the yellow box resizes to the word and the rest of the sentence moves with it. */
+const RULE_LINES: { pre: number; f: [number, number, string[]][]; tail: number[] }[] = [
+  { pre: 2526, f: [[2527, 2528, ['3 days', '2 days', '5 days']], [2530, 2531, ['me', 'the warden', 'the technician']]], tail: [2529, 2532] },
+  { pre: 2533, f: [[2534, 2535, ['5 days', '3 days', '7 days']], [2537, 2538, ['the warden', 'me', 'the estate office']]], tail: [2536, 2539] },
+  { pre: 2540, f: [[2541, 2542, ['twice', 'once', 'three times']], [2544, 2545, ['pick a new time', 'call the technician']]], tail: [2543, 2546] },
+  { pre: 2547, f: [[2548, 2549, ['evening at 9', 'morning at 8', 'evening at 7']]], tail: [2550] },
+]
+let ctx2d: CanvasRenderingContext2D | null = null
+const measure = (s: string) => { ctx2d ??= document.createElement('canvas').getContext('2d'); ctx2d!.font = '800 30px "League Spartan"'; return ctx2d!.measureText(s).width }
 export function Rules() {
-  const { toast } = useApp()
-  const s = store.use(x => x)
-  const Step = ({ label, value, set, unit, min = 1, max = 10 }: { label: string; value: number; set: (n: number) => void; unit: string; min?: number; max?: number }) => (
-    <div className="flex items-center justify-between gap-6 border-b border-rule py-4">
-      <span className="text-[15px]">{label}</span>
-      <span className="flex items-center gap-2">
-        <Button size="sm" variant="secondary" full={false} aria-label="Less" onClick={() => set(Math.max(min, value - 1))}>−</Button>
-        <span className="w-28 text-center text-[16px] font-semibold tabular">{value} {unit}{value === 1 ? '' : 's'}</span>
-        <Button size="sm" variant="secondary" full={false} aria-label="More" onClick={() => set(Math.min(max, value + 1))}>+</Button>
-      </span>
-    </div>
-  )
-  return (
-    <Page back title="Rules" sub="How the desk behaves for Himalaya Bhawan. Students see these promises.">
-      <div className="max-w-[760px] rounded-[12px] border border-line bg-paper px-6 shadow-desk">
-        <Step label="Promise to fix a normal report within" value={s.promise} set={n => store.set({ promise: n })} unit="day" />
-        <Step label="Escalate to the warden when blocked for" value={s.autoEscalate} set={n => store.set({ autoEscalate: n })} unit="day" />
-        <Step label="After this many missed visits, fix a slot and the warden opens" value={s.missedRule} set={n => store.set({ missedRule: n })} unit="visit" max={4} />
-        <div className="py-5"><Toggle tone="canal" on={s.quietFrom === '9:00 PM'} onChange={v => store.set({ quietFrom: v ? '9:00 PM' : 'none' })} label="No visits after 9 PM" sub="Except dangerous reports" /></div>
-      </div>
-      <div className="mt-6"><Button variant="primary" size="md" full={false} onClick={() => { fx.success(); toast({ kind: 'bar', title: 'Rules saved', body: 'Students see the new promise right away', icon: <CircleCheck size={20} /> }) }}>Save rules</Button></div>
-    </Page>
-  )
+  const rules = store.use(x => x.rules), saved = store.use(x => x.rulesSaved)
+  const [, force] = useState(0)
+  useEffect(() => { document.fonts?.ready.then(() => force(x => x + 1)) }, [])
+  const nodeOf = (n: number) => S.rules.k!.find(k => k.i === id(n))!
+  const binds: Binds[] = []
+  let fi = 0
+  RULE_LINES.forEach(line => {
+    let shift = 0
+    const order = [...line.f.map(f => f[0]), ...line.tail].sort((a, b) => nodeOf(a).x - nodeOf(b).x)
+    const fieldOf = new Map(line.f.map(f => [f[0], f]))
+    for (const nid of order) {
+      const f = fieldOf.get(nid)
+      const rect = nodeOf(nid)
+      if (!f) { binds.push({ [id(nid)]: { style: { left: rect.x + shift } } }); continue }
+      const k = fi++
+      const word = f[2][rules[k] % f[2].length]
+      const textNode = nodeOf(f[1])
+      const w = Math.round(measure(word)) + (rect.w - textNode.w)
+      binds.push(
+        { [id(f[0])]: { onClick: () => { fx.select(); store.set(s => ({ rulesSaved: false, rules: s.rules.map((v, j) => (j === k ? v + 1 : v)) })) }, label: 'Change: ' + word, style: { left: rect.x + shift, width: w, transition: 'width .15s' } } },
+        { [id(f[1])]: { text: word, style: { left: textNode.x + shift, width: 'auto' } } },
+      )
+      shift += w - rect.w
+    }
+  })
+  return <Fig s={S.rules} binds={B(...binds,
+    btn(2554, () => { fx.success(); store.set({ rulesSaved: true }) }, 'Save rules'),
+    saved ? txt(2555, 'Saved ✓') : {},
+  )} />
 }
 
-/* ------------------------------ Errors ------------------------------ */
-export function ErrorPage({ kind }: { kind: 'e404' | 'eOffline' | 'e500' | 'expired' }) {
+/* ================= Errors ================= */
+export function E404() {
   const { nav } = useApp()
-  const E = {
-    e404: ['think', 'We cannot find that page', 'The request may have been merged or closed.', 'Back to home', () => nav.reset('home', { tr: 'swap' })],
-    eOffline: ['sit', 'No connection', 'Your changes are saved here and will send when you are back online.', 'Try again', () => nav.back({ tr: 'swap' })],
-    e500: ['think', 'That was on us', 'Something broke on our side. Nothing you did is lost.', 'Try again', () => nav.back({ tr: 'swap' })],
-    expired: ['point', 'Please sign in again', 'For safety the desk signs out after 8 hours.', 'Sign in', () => nav.reset('login', { tr: 'swap' })],
-  }[kind] as ['think' | 'sit' | 'point', string, string, string, () => void]
-  return (
-    <div className="flex h-full flex-col items-center justify-center bg-cream text-center">
-      <div className="font-mono text-[13px] tracking-[0.12em] text-faint">{{ e404: 'ERROR 404', eOffline: 'OFFLINE', e500: 'ERROR 500', expired: 'SESSION ENDED' }[kind]}</div>
-      <span className="mt-4"><Mark tone={kind === 'expired' ? 'canal' : kind === 'eOffline' ? 'sun' : 'brick'}>{{ e404: <Search size={24} />, eOffline: <WifiOff size={24} />, e500: <AlertTriangle size={24} />, expired: <Lock size={24} /> }[kind]}</Mark></span>
-      <h1 className="mt-5 font-head text-[30px] font-bold">{E[1]}</h1>
-      <p className="mt-2 max-w-[420px] text-[16px] text-mid">{E[2]}</p>
-      <div className="mt-7 flex gap-3"><Button variant="primary" size="md" full={false} onClick={E[4]}>{E[3]}</Button>{kind === 'e500' && <Button variant="secondary" size="md" full={false} onClick={() => nav.reset('home', { tr: 'swap' })}>Go home</Button>}</div>
-    </div>
-  )
+  return <Fig s={S.e404} binds={B({ '236:622': { wrap: settle(0.1) } }, btn('236:630', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'), btn('236:632', () => nav.reset('check', { tr: 'none' }), 'Go to To check'))} />
 }
-export { Undo2, KeyRound, Users, CalendarDays, TrendingUp, OctagonAlert, Flag, X, Divider, Pop, useEffect, useMemo, dayTime }
+export function Offline() {
+  const { nav } = useApp()
+  const [tries, setTries] = useState(0)
+  return <Fig s={S.offline} binds={B({ '236:952': { wrap: settle(0.1) } },
+    btn('236:960', () => { if (navigator.onLine) { fx.success(); nav.reset('desk', { tr: 'none' }) } else { fx.error(); setTries(t => t + 1) } }, 'Try again'),
+    tries ? txt('236:965', `Still no connection · tried ${tries} time${tries > 1 ? 's' : ''}`) : {},
+    btn('236:962', () => nav.reset('desk', { tr: 'none' }), 'View last loaded desk'))} />
+}
+export function E500() {
+  const { nav } = useApp()
+  return <Fig s={S.e500} binds={B({ '236:1284': { wrap: settle(0.1) } }, btn('236:1292', () => nav.reset('desk', { tr: 'none' }), 'Try again'), btn('236:1294', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'))} />
+}
+
+export const SCREENS: Record<Screen, () => React.ReactElement> = {
+  signin: SignIn, desk: Desk, check: Check, review: Review, closure: Closure, forecast: Forecast, blocked: Blocked, blockedOne: BlockedOne,
+  disputes: Disputes, disputeOne: DisputeOne, fixtures: Fixtures, fixtureOne: FixtureOne, team: Team, tech: Tech, rules: Rules,
+  e404: E404, offline: Offline, e500: E500, expired: Expired,
+}
+/** Which rail item is lit for each screen (as in the Figma). */
+export const RAIL_OF: Record<Screen, number> = {
+  signin: -1, expired: -1, desk: 0, check: 1, review: 1, closure: 1, forecast: 2, blocked: 3, blockedOne: 3, disputes: 4, disputeOne: 4,
+  fixtures: 5, fixtureOne: 5, team: 6, tech: 6, rules: 6, e404: 0, offline: 0, e500: 0,
+}
