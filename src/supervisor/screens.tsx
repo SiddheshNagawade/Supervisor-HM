@@ -7,9 +7,13 @@ import { Fig, FNode, Binds, textStyle } from '../fig/Fig'
 import { Reveal, Slap, PlaceDown, Settle } from '../fig/anim'
 import { NavApi } from '../ds/nav'
 import { fx } from '../ds/fx'
+import { Hanging, peek } from '../fig/mascot'
 import FIG from './fig.json'
 import { store, EMAIL_OK, NEW_ROW, CLOSURES, BLOCKED, DISPUTES, FIXTURES, TEAM, Row } from './store'
 
+/* The beaver drawings from the Figma, by mood. */
+export const BEAVER = { wave: '227:313', cheer: '226:570', thumbs: '229:79', think: '226:910', point: '227:368' } as const
+const hideIds = (...ids: string[]): Binds => Object.fromEntries(ids.map(i => [i, { hide: true }]))
 export const S = (FIG as unknown as { screens: Record<string, FNode> }).screens
 export const RAILSETS = (FIG as unknown as { rail: string[][] }).rail
 
@@ -73,7 +77,7 @@ function SignInLike({ s, ids }: { s: FNode; ids: { email: string; pass: string; 
   const submit = () => {
     if (!EMAIL_OK.test(email.trim())) { fx.error(); setErr('email'); return }
     if (!pass) { fx.error(); setErr('pass'); return }
-    fx.success(); store.set({ signedIn: true, email: email.trim() }); nav.reset('desk', { tr: 'none' })
+    fx.success(); store.set({ signedIn: true, email: email.trim() }); nav.reset('desk', { tr: 'none' }); setTimeout(() => peek({ mood: 'wave', say: 'Hi Meera!', sub: 'Three things need you today.' }), 700)
   }
   const brick = { color: '#B8530A' }
   const dots = arts(s, n => n.n === 'd' && n.w === 26)
@@ -152,7 +156,7 @@ export function Review() {
   const rows = store.use(x => x.rows)
   const r: Row = rows.find(x => x.id === P(nav, 'id', 'r1')) || rows[0] || NEW_ROW
   const [who, setWho] = useState(0)
-  const finish = () => { fx.stamp(); done(r.id); nav.reset('check', { tr: 'none' }) }
+  const finish = () => { fx.stamp(); peek({ mood: 'cheer', say: `${CHIPS[who][1]} has it.`, sub: `${r.room} · ${r.title}` }); done(r.id); nav.reset('check', { tr: 'none' }) }
   return <Fig s={S.review} binds={B(
     txt(1011, `${r.room} · Block ${r.block} · sent ${r.age.replace(/^1d ago$/, 'yesterday').replace(/(\d+)h ago/, '$1 hours ago').replace(/(\d+)d ago/, '$1 days ago')}`),
     r.photo ? { '232:1012': { art: r.photo === 'chair' ? '232:2013' : undefined, wrap: place(0.1) } } : hide(1012, 1025),
@@ -170,7 +174,7 @@ export function Review() {
 export const mergeBinds = (close: () => void, nav: NavApi<Screen>, rowId?: string): Binds => B(
   { '232:1183': { style: { animation: 'figfade .2s ease both' } } },
   { '232:1193': { wrap: place(0.15) }, '232:1199': { wrap: place(0.3) }, '232:1205': { wrap: rev('x', 0.45, 0.5) } },
-  btn(1189, () => { fx.stamp(); if (rowId) done(rowId); close(); nav.reset('check', { tr: 'none' }) }, 'Merge'),
+  btn(1189, () => { fx.stamp(); peek({ mood: 'cheer', say: 'Merged into one job.' }); if (rowId) done(rowId); close(); nav.reset('check', { tr: 'none' }) }, 'Merge'),
   btn(1191, close, 'Keep separate'),
 )
 
@@ -180,7 +184,7 @@ export function Closure() {
   const { nav } = useApp()
   const at = Math.min(store.use(x => x.closureAt), CLOSURES.length - 1)
   const c = CLOSURES[at]
-  const next = () => { fx.stamp(); if (at + 1 >= CLOSURES.length) { store.set({ closureAt: CLOSURES.length }); nav.reset('check', { tr: 'none' }) } else store.set({ closureAt: at + 1 }) }
+  const next = () => { fx.stamp(); peek({ mood: 'thumbs', say: at + 1 >= CLOSURES.length ? 'All closures done!' : 'Closed.', sub: at + 1 >= CLOSURES.length ? undefined : `${CLOSURES.length - at - 1} to go`, ms: 1800 }); if (at + 1 >= CLOSURES.length) { store.set({ closureAt: CLOSURES.length }); nav.reset('check', { tr: 'none' }) } else store.set({ closureAt: at + 1 }) }
   return <Fig key={at} s={S.closure} binds={B(
     txt(1239, `${c.room} · Block ${c.block} · closed ${c.when} by ${c.tech}`), txt(1269, `What ${c.tech} did`), txt(1271, c.did), txt(1316, `closure ${at + 1} of ${CLOSURES.length}`),
     { '232:1240': { wrap: place(0.1) }, '232:1254': { wrap: place(0.35) } },
@@ -206,7 +210,7 @@ export function Forecast() {
     { '232:1631': { wrap: rev('x', 1.0, 1.0) }, '232:1635': { wrap: rev('x', 1.5, 0.6) }, '232:1637': { wrap: slap(1.2) } },
     moved ? B(txt(1522, '+2 over', { top: 260 }), txt(1464, '+4 over', { top: 212 }), txt(1634, 'Tuesday is fine now', { color: '#3E4F72' })) : {},
     moved ? txt(1642, 'Done. Two Tuesday jobs now go on Monday, inside their promise.') : left ? txt(1642, 'Okay. Tuesday stays as it is. ALIGN will warn the team on Monday night.') : {},
-    btn(1643, () => { fx.success(); store.set({ moved: true }) }, 'Move two to Monday'),
+    btn(1643, () => { fx.success(); store.set({ moved: true }); setTimeout(() => peek({ mood: 'thumbs', say: 'Tuesday is lighter now.' }), 900) }, 'Move two to Monday'),
     { '232:1645': { onClick: () => { fx.tap(); store.set({ leftAlone: true }) } } },
     settled ? hide(1643, 1644, 1645, 1647) : {},
   )} />
@@ -252,7 +256,7 @@ export const escalateBinds = (close: () => void, i: number, who: number, setWho:
   { '234:383': { onClick: () => { fx.select(); setWho(0) }, label: 'Warden', style: { background: who === 0 ? '#FFD265' : '#FFFBF3' } } },
   { '234:385': { onClick: () => { fx.select(); setWho(1) }, label: 'Estate office', style: { background: who === 1 ? '#FFD265' : '#FFFBF3' } } },
   field('234:387', note, setNote, { width: 516, placeholder: 'Add a line for them' }),
-  btn('234:389', () => { fx.stamp(); store.set(s => ({ escalated: [...s.escalated, i] })); close() }, 'Escalate'),
+  btn('234:389', () => { fx.stamp(); peek({ mood: 'point', say: `Sent to the ${who ? 'estate office' : 'warden'}.`, sub: 'You stay on the job.' }); store.set(s => ({ escalated: [...s.escalated, i] })); close() }, 'Escalate'),
   btn('234:391', close, 'Cancel'),
 )
 
@@ -280,7 +284,7 @@ export function DisputeOne() {
   const { nav, setModal } = useApp()
   const i = P(nav, 'i', 0)
   const d = DISPUTES[i]
-  const settle = () => { fx.stamp(); store.set(s => ({ disputesLeft: s.disputesLeft.filter(x => x !== i) })); nav.reset('disputes', { tr: 'none' }) }
+  const settle = () => { fx.stamp(); peek({ mood: 'thumbs', say: 'Settled.', sub: `${d.room} · ${d.item}`, ms: 2000 }); store.set(s => ({ disputesLeft: s.disputesLeft.filter(x => x !== i) })); nav.reset('disputes', { tr: 'none' }) }
   return <Fig s={S.disputeOne} binds={B(
     txt(2004, `${d.room} · ${d.item}`), txt(2005, `The student says it is not fixed. ${d.tech} says it is.`), txt(2024, `${d.tech} says`),
     txt(2012, d.student), txt(2030, d.techSays),
@@ -297,7 +301,7 @@ export const reassignBinds = (close: () => void, m: NonNullable<Modal>, who: num
   ...[['234:475', 'Ravi'], ['234:486', 'Imran'], ['234:501', 'Deepak']].map(([c, name], k) => ({ [c]: { onClick: () => { fx.select(); setWho(k) }, label: name, style: { background: who === k ? '#FFD265' : '#FFFBF3' } } })),
   txt('234:508', PICK[who]),
   btn('234:509', () => {
-    fx.stamp(); close()
+    fx.stamp(); peek({ mood: 'cheer', say: `${['Ravi', 'Imran', 'Deepak'][who]} is on it.` }); close()
     if (m.from === 'dispute') { store.set(s => ({ disputesLeft: s.disputesLeft.filter(x => x !== m.i) })); nav.reset('disputes', { tr: 'none' }) }
   }, 'Reassign'),
   btn('234:511', close, 'Cancel'),
@@ -398,7 +402,7 @@ export function Rules() {
     }
   })
   return <Fig s={S.rules} binds={B(...binds,
-    btn(2554, () => { fx.success(); store.set({ rulesSaved: true }) }, 'Save rules'),
+    btn(2554, () => { fx.success(); store.set({ rulesSaved: true }); peek({ mood: 'thumbs', say: 'Rules saved.', ms: 1800 }) }, 'Save rules'),
     saved ? txt(2555, 'Saved ✓') : {},
   )} />
 }
@@ -406,19 +410,18 @@ export function Rules() {
 /* ================= Errors ================= */
 export function E404() {
   const { nav } = useApp()
-  return <Fig s={S.e404} binds={B({ '236:622': { wrap: settle(0.1) } }, btn('236:630', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'), btn('236:632', () => nav.reset('check', { tr: 'none' }), 'Go to To check'))} />
+  return <Fig s={S.e404} binds={B(hideIds('236:622', '236:628'), btn('236:630', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'), btn('236:632', () => nav.reset('check', { tr: 'none' }), 'Go to To check'))} extra={<Hanging art={BEAVER.cheer} sign="sign-board" cx={764} top={20} scale={1.55} title="We can't find that page." sub="It may be old, closed or merged." />} />
 }
 export function Offline() {
   const { nav } = useApp()
   const [tries, setTries] = useState(0)
-  return <Fig s={S.offline} binds={B({ '236:952': { wrap: settle(0.1) } },
-    btn('236:960', () => { if (navigator.onLine) { fx.success(); nav.reset('desk', { tr: 'none' }) } else { fx.error(); setTries(t => t + 1) } }, 'Try again'),
-    tries ? txt('236:965', `Still no connection · tried ${tries} time${tries > 1 ? 's' : ''}`) : {},
-    btn('236:962', () => nav.reset('desk', { tr: 'none' }), 'View last loaded desk'))} />
+  return <Fig s={S.offline} binds={B(hideIds('236:952', '236:958'),
+    btn('236:960', () => { if (navigator.onLine) { fx.success(); nav.reset('desk', { tr: 'none' }) } else { fx.error(); setTries(t => t + 1); peek({ mood: 'think', say: 'Still no internet.', sub: tries ? `Tried ${tries + 1} times` : undefined }) } }, 'Try again'),
+    btn('236:962', () => nav.reset('desk', { tr: 'none' }), 'View last loaded desk'))} extra={<Hanging art={BEAVER.cheer} sign="sign-board" cx={764} top={20} scale={1.55} title="You're offline." sub="Reconnect to get the latest updates." />} />
 }
 export function E500() {
   const { nav } = useApp()
-  return <Fig s={S.e500} binds={B({ '236:1284': { wrap: settle(0.1) } }, btn('236:1292', () => nav.reset('desk', { tr: 'none' }), 'Try again'), btn('236:1294', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'))} />
+  return <Fig s={S.e500} binds={B(hideIds('236:1284', '236:1290'), btn('236:1292', () => nav.reset('desk', { tr: 'none' }), 'Try again'), btn('236:1294', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'))} extra={<Hanging art={BEAVER.cheer} sign="sign-board" cx={764} top={20} scale={1.55} title="Something broke on our side." sub="Your decisions are saved." />} />
 }
 
 export const SCREENS: Record<Screen, () => React.ReactElement> = {

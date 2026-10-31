@@ -7,9 +7,10 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { useNav, Stage } from '../ds/nav'
 import { Fig, figArt, FNode } from '../fig/Fig'
 import { fx, setMuted, useMuted } from '../ds/fx'
-import { Ctx, Modal, Screen, SCREENS, RAIL_OF, RAILSETS, S, mergeBinds, escalateBinds, reassignBinds } from './screens'
+import { BEAVER, Ctx, Modal, Screen, SCREENS, RAIL_OF, RAILSETS, S, mergeBinds, escalateBinds, reassignBinds } from './screens'
 import FIG from './fig.json'
 import { store, NEW_ROW } from './store'
+import { PeekHost, OfflineBuddy } from '../fig/mascot'
 
 const RAW = (FIG as unknown as { screens: Record<string, FNode> }).screens
 const from = (s: FNode, firstId: string, skip: string[] = []): FNode => {
@@ -92,15 +93,17 @@ export default function App() {
   const q = new URLSearchParams(location.search).get('s') as Screen | null
   const nav = useNav<Screen>(q && SCREENS[q] ? q : store.get().signedIn ? 'desk' : 'signin', 'none')
   const [modal, setModal] = useState<Modal>(null)
+  const [online, setOnline] = useState(navigator.onLine)
   const [panel, setPanel] = useState(false)
   const muted = useMuted()
   const k = useFit()
   useEffect(() => { setModal(null) }, [nav.key])
   useEffect(() => {
-    const off = () => nav.go('offline', { tr: 'none' })
+    const off = () => setOnline(false), on = () => setOnline(true)
+    addEventListener('online', on)
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { setModal(null); setPanel(false) } }
     addEventListener('offline', off); addEventListener('keydown', esc)
-    return () => { removeEventListener('offline', off); removeEventListener('keydown', esc) }
+    return () => { removeEventListener('offline', off); removeEventListener('online', on); removeEventListener('keydown', esc) }
   }, [])
   const sel = RAIL_OF[nav.screen]
   const go = (s: Screen) => nav.reset(s, { tr: 'none' })
@@ -119,6 +122,8 @@ export default function App() {
           <div style={{ width: 1440, height: 900, transform: `scale(${k})`, transformOrigin: '0 0', position: 'relative', overflow: 'hidden', borderRadius: 28, background: '#FFFBF3' }}>
             <Stage nav={nav as never}><El /></Stage>
             {sel >= 0 && <Rail sel={sel} go={go} signOut={() => { fx.tap(); store.set({ signedIn: false }); go('signin') }} />}
+            <OfflineBuddy offline={!online} art={BEAVER.cheer} sign="sign-board" cx={764} scale={1.4} title="You're offline." sub="Reconnect to get the latest updates. What you loaded is still here." back={{ mood: 'wave', say: 'Back online!', side: 'right' }} />
+            <PeekHost arts={BEAVER} w={1440} h={900} size={320} side="right" />
             {modal && <Dialog key={modal.kind} m={modal} close={() => { fx.tap(); setModal(null) }} nav={nav} />}
           </div>
         </div>
