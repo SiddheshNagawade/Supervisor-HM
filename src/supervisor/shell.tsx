@@ -1,7 +1,8 @@
 import { ReactNode, createContext, useContext, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { Home, Inbox, TrendingUp, OctagonAlert, Flag, Wrench, Users, SlidersHorizontal, ArrowLeft, LogOut, WifiOff, Search } from 'lucide-react'
+import { Home, Inbox, TrendingUp, OctagonAlert, Flag, Wrench, Users, SlidersHorizontal, ArrowLeft, LogOut, WifiOff, Search } from '../ds/icons'
 import { Tooltip, cx, ToastOpts, Avatar } from '../ds/ui'
+import { WobbleDot } from '../ds/icons'
 import { NavApi } from '../ds/nav'
 import { fx } from '../ds/fx'
 import { spring, springPop, Words } from '../ds/motion'
@@ -20,7 +21,8 @@ const RAIL: { s: Screen; label: string; icon: typeof Home; key: string }[] = [
 ]
 const GROUP: Partial<Record<Screen, Screen>> = { review: 'check', closure: 'check', blockedOne: 'blocked', disputeOne: 'disputes', fixtureOne: 'fixtures', tech: 'team' }
 
-function Rail() {
+/** Left navigation. Lives outside the page transition so it never moves. */
+export function Rail() {
   const { nav } = useApp()
   const reps = store.use(s => s.reps)
   const badge: Partial<Record<Screen, number>> = { check: reps.filter(r => r.status === 'new' || r.status === 'closure').length, blocked: reps.filter(r => r.status === 'blocked').length, disputes: reps.filter(r => r.status === 'disputed').length }
@@ -54,14 +56,14 @@ function Rail() {
   )
 }
 
-/** Desktop page: rail on the left, a header, and content that cascades in. */
+/** Desktop page: header and content. The rail is drawn once by App, outside the transition. */
+export const NO_RAIL: Screen[] = ['login', 'e404', 'eOffline', 'e500', 'expired']
 export function Page({ title, sub, right, children, back, wide }: { title: string; sub?: ReactNode; right?: ReactNode; children: ReactNode; back?: boolean; wide?: boolean }) {
   const { nav, online } = useApp()
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => { ref.current?.scrollTo(0, 0) }, [nav.key])
   return (
     <div className="flex h-full bg-cream">
-      <Rail />
       <main className="flex min-w-0 flex-1 flex-col">
         {!online && <div className="flex items-center justify-center gap-2 bg-sun py-2 text-[14px] font-semibold"><WifiOff size={16} />No connection. Changes wait here and send when you are back online.</div>}
         <div ref={ref} className="scroll-thin min-h-0 flex-1 overflow-y-auto">
@@ -70,9 +72,9 @@ export function Page({ title, sub, right, children, back, wide }: { title: strin
               <div className="min-w-0">
                 {back && <button onClick={() => { fx.tap(); nav.back({ tr: 'swap' }) }} className="mb-2 flex items-center gap-1.5 rounded-[8px] text-[14px] font-semibold text-mid hover:text-navy"><ArrowLeft size={16} />Back</button>}
                 <Words text={title} className="font-head text-[36px] font-extrabold leading-tight tracking-[-0.01em]" />
-                {sub && <motion.p initial={{ y: 6, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="mt-1 max-w-[720px] text-[16px] text-mid">{sub}</motion.p>}
+                {sub && <p className="mt-1 max-w-[720px] text-[16px] text-mid">{sub}</p>}
               </div>
-              {right && <motion.div initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ ...springPop, delay: 0.1 }} className="shrink-0">{right}</motion.div>}
+              {right && <div className="shrink-0">{right}</div>}
             </header>
             {children}
           </div>
@@ -85,9 +87,9 @@ export function Page({ title, sub, right, children, back, wide }: { title: strin
 export const H2 = ({ children, right, className }: { children: ReactNode; right?: ReactNode; className?: string }) => (
   <div className={cx('mb-3 flex items-center justify-between border-b-2 border-navy pb-2', className)}><h2 className="font-head text-[19px] font-extrabold">{children}</h2>{right}</div>
 )
-export const Dot = ({ tone = 'navy', size = 12 }: { tone?: 'navy' | 'ember' | 'ring' | 'green' | 'sun' | 'faint'; size?: number }) => (
-  <span className={cx('inline-block shrink-0 rounded-full', { navy: 'bg-navy', ember: 'bg-ember', ring: 'border-2 border-ember bg-paper', green: 'bg-green', sun: 'bg-sun ring-2 ring-navy', faint: 'bg-navy/15' }[tone])} style={{ width: size, height: size }} />
-)
+/** Hand-drawn dot from the Figma charts. */
+export const Dot = ({ tone = 'navy', size = 12 }: { tone?: 'navy' | 'ember' | 'ring' | 'green' | 'sun' | 'faint'; size?: number }) =>
+  tone === 'green' ? <span className="inline-block shrink-0 rounded-full bg-green" style={{ width: size, height: size }} /> : <WobbleDot kind={tone} size={Math.round(size * 1.35)} />
 export function SearchBox({ value, onChange, placeholder = 'Search room or problem' }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const r = useRef<HTMLInputElement>(null)
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === '/' && document.activeElement !== r.current) { e.preventDefault(); r.current?.focus() } }; addEventListener('keydown', k); return () => removeEventListener('keydown', k) }, [])

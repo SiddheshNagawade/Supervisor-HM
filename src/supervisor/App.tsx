@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { FlaskConical, X, Volume2, VolumeX, RotateCcw, Keyboard } from 'lucide-react'
+import { FlaskConical, X, Volume2, VolumeX, RotateCcw, Keyboard } from '../ds/icons'
 import { useNav, Stage } from '../ds/nav'
 import { ToastHost, ToastOutlet, useToast, Tooltip, cx } from '../ds/ui'
 import { fx, setMuted, useMuted } from '../ds/fx'
-import { springPop } from '../ds/motion'
-import { Ctx, Screen } from './shell'
+import { Ctx, Screen, Rail, NO_RAIL } from './shell'
 import * as V from './screens'
 import { store } from './store'
 
@@ -35,13 +34,18 @@ function Inner() {
   return (
     <Ctx.Provider value={{ nav, toast, online }}>
       <div className="fixed inset-0 min-w-[1100px] bg-cream">
-        <Stage nav={nav as never}>{v[nav.screen]}</Stage>
+        {NO_RAIL.includes(nav.screen) ? <Stage nav={nav as never}>{v[nav.screen]}</Stage> : (
+          <div className="flex h-full">
+            <Rail />
+            <div className="relative min-w-0 flex-1 overflow-hidden"><Stage nav={nav as never}>{v[nav.screen]}</Stage></div>
+          </div>
+        )}
         <ToastOutlet placement="bottom" />
         {nav.screen !== 'login' && (
           <div className="absolute bottom-6 right-6 z-40 flex flex-col items-end gap-3">
             <AnimatePresence>
               {sim && (
-                <motion.div initial={{ y: 20, scale: 0.95, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1 }} exit={{ y: 10, opacity: 0 }} transition={springPop} className="w-[320px] rounded-[20px] border-2 border-navy bg-paper p-4 shadow-lift">
+                <motion.div initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 8, opacity: 0 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }} className="w-[320px] rounded-[20px] border-2 border-navy bg-paper p-4 shadow-lift">
                   <div className="mb-1 flex items-center justify-between"><span className="font-head text-[18px] font-extrabold">Simulate</span><button aria-label="Close" onClick={() => setSim(false)} className="rounded-full p-1 hover:bg-navy/5"><X size={18} /></button></div>
                   <p className="mb-3 text-[13px] text-mid">What students and technicians would do. For trying the desk.</p>
                   <div className="flex flex-col gap-2">{actions.map(([l, f]) => <button key={l} onClick={() => { fx.tap(); setSim(false); f() }} className="rounded-[12px] border-2 border-royal bg-royal2 px-3 py-2 text-left text-[14px] font-bold text-royal shadow-[0_3px_0_#0E2DD2] active:translate-y-[3px] active:shadow-none">{l}</button>)}</div>
@@ -61,7 +65,7 @@ function Inner() {
         <AnimatePresence>
           {keys && (
             <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setKeys(false)}>
-              <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.94, y: 20 }} animate={{ scale: 1, y: 0 }} transition={springPop} className="w-[420px] rounded-[24px] border-2 border-navy bg-cream p-7 shadow-[0_6px_0_#00224E]">
+              <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.98, y: 8 }} animate={{ scale: 1, y: 0 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }} className="w-[420px] rounded-[24px] border-2 border-navy bg-cream p-7 shadow-[0_6px_0_#00224E]">
                 <h2 className="font-head text-[24px] font-extrabold">Keyboard shortcuts</h2>
                 <div className="mt-4 grid grid-cols-[auto_1fr] gap-x-5 gap-y-2.5 text-[15px]">
                   {[['1 – 8', 'Jump to a section'], ['/', 'Search on To check'], ['Esc', 'Close a dialog'], ['?', 'Show or hide this']].map(([k, d]) => <React.Fragment key={k}><kbd className="rounded-[8px] border-2 border-navy bg-paper px-2 py-0.5 text-center font-mono text-[14px]">{k}</kbd><span>{d}</span></React.Fragment>)}

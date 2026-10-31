@@ -1,8 +1,8 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check as CheckIcon, X, ArrowRight, Merge, Clock3, Camera, KeyRound, ShieldAlert, Phone, Users, Undo2, Sparkles, AlertTriangle, ChevronRight, CircleCheck, Send, RotateCcw, Wrench, Mail, Lock, Eye, EyeOff, Zap, Droplets, Hammer, BrickWall, TrendingUp, CalendarDays, OctagonAlert, Flag } from 'lucide-react'
+import { Check as CheckIcon, X, ArrowRight, Merge, Clock3, Camera, KeyRound, ShieldAlert, Phone, Users, Undo2, Sparkles, AlertTriangle, ChevronRight, CircleCheck, Send, RotateCcw, Wrench, Mail, Lock, Eye, EyeOff, Zap, Droplets, Hammer, BrickWall, TrendingUp, CalendarDays, OctagonAlert, Flag } from '../ds/icons'
 import { Art, Avatar, Beaver, Button, Card, Chip, Choice, Dialog, Segmented, Tag, TextArea, TextField, Toggle, Tooltip, cx, Divider, Stars } from '../ds/ui'
-import { CountUp, Drop, Rise, Words, Stamp, spring, springPop, Pop } from '../ds/motion'
+import { CountUp, Drop, Rise, Words, Stamp, ArtIn, spring, springPop, Pop } from '../ds/motion'
 import { fx } from '../ds/fx'
 import { ago, dayTime, Trade } from '../data/iitr'
 import { Page, H2, Dot, SearchBox, useApp, Screen } from './shell'
@@ -38,7 +38,7 @@ export function Login() {
       <div className="relative flex w-[46%] flex-col overflow-hidden bg-navy p-12 text-cream">
         <div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-sun font-head text-[24px] font-extrabold text-navy"><span className="pt-1">A</span></span><span className="font-head text-[26px] font-extrabold tracking-[0.12em]">ALIGN</span></div>
         <div className="mb-10 mt-auto flex items-end gap-5" aria-hidden>
-          {cols.map((c, i) => <div key={i} className="flex flex-col-reverse gap-2">{Array.from({ length: c }, (_, j) => <motion.span key={j} initial={{ y: -300, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ ...springPop, delay: 0.2 + i * 0.08 + j * 0.05 }} className={cx('h-4 w-4 rounded-full', i === 3 && j === 4 ? 'bg-sun' : 'bg-cream')} />)}</div>)}
+          {cols.map((c, i) => <div key={i} className="flex flex-col-reverse gap-2">{Array.from({ length: c }, (_, j) => <motion.span key={j} initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1], delay: 0.1 + i * 0.04 + j * 0.02 }} className={cx('h-4 w-4 rounded-full', i === 3 && j === 4 ? 'bg-sun' : 'bg-cream')} />)}</div>)}
         </div>
         <Words text="Every request, counted and visible." className="font-head text-[34px] font-extrabold leading-tight" delay={0.3} />
         <p className="mt-3 max-w-[420px] text-[16px] text-cream/80">The desk for the people who keep a Bhawan running. Students report, IWD fixes, you see it all in one place.</p>
@@ -99,7 +99,7 @@ export function HomeScreen() {
                 <div className="flex flex-col-reverse gap-1.5">
                   {Array.from({ length: cols[i] }, (_, k) => (
                     <Tooltip key={k} label={`${d === 'Today' ? 'Reported today' : `Waiting ${d}`}${i >= promise ? ' · past the promise' : ''}`}>
-                      <motion.span initial={{ y: -80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ ...springPop, delay: 0.2 + i * 0.05 + k * 0.03 }}><Dot tone={i === 6 && k === 2 ? 'ember' : i >= promise ? 'ring' : 'navy'} size={14} /></motion.span>
+                      <motion.span className="block" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1], delay: 0.1 + i * 0.03 + k * 0.015 }}><Dot tone={i === 6 && k === 2 ? 'ember' : i >= promise ? 'ring' : 'navy'} size={14} /></motion.span>
                     </Tooltip>
                   ))}
                 </div>
@@ -157,7 +157,7 @@ export function CheckScreen() {
         <div className="grid grid-cols-[110px_1.6fr_1fr_100px_220px] gap-4 border-b-2 border-navy bg-sand px-5 py-3 text-[13px] font-bold uppercase tracking-[0.06em] text-mid"><span>Room</span><span>Problem</span><span>{tab === 'new' ? 'Reported by' : 'Closed by'}</span><span>Waiting</span><span className="text-right">Action</span></div>
         <AnimatePresence initial={false}>
           {list.map((r, i) => (
-            <motion.div key={r.id} layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0, transition: { ...spring, delay: i * 0.03 } }} exit={{ opacity: 0, x: 60, height: 0, transition: { duration: 0.25 } }}
+            <motion.div key={r.id} layout initial={false} exit={{ opacity: 0, x: 60, height: 0, transition: { duration: 0.25 } }}
               className="group grid cursor-pointer grid-cols-[110px_1.6fr_1fr_100px_220px] items-center gap-4 border-b border-line px-5 py-4 last:border-0 hover:bg-sun2/50"
               onClick={() => { fx.tap(); nav.go(tab === 'new' ? 'review' : 'closure', { tr: 'swap', p: { id: r.id } }) }}>
               <span className="flex items-center gap-2.5"><Dot tone={r.urgent ? 'ember' : ageDays(r.at) >= 3 ? 'ring' : 'navy'} /><span className="font-mono text-[16px] font-medium">{r.room}</span></span>
@@ -191,7 +191,7 @@ export function Review() {
     <Page back title={`${r.room} · ${r.item}`} sub={`${r.issue} · Block ${r.block} · reported ${ago(r.at)} by ${r.student}`} right={r.urgent ? <Tag tone="danger" icon={<AlertTriangle size={14} />}>Marked dangerous</Tag> : undefined}>
       <div className="grid grid-cols-[300px_1fr] gap-12">
         <div className="flex flex-col gap-6">
-          {r.photo ? <Drop><Photo n={r.photo} cap={`${r.item.toLowerCase()}, ${r.room}`} w={300} /></Drop> : <Card variant="flat" className="flex h-[200px] flex-col items-center justify-center gap-2 text-mid"><Camera size={28} />No photo</Card>}
+          {r.photo ? <ArtIn><Photo n={r.photo} cap={`${r.item.toLowerCase()}, ${r.room}`} w={300} /></ArtIn> : <Card variant="flat" className="flex h-[200px] flex-col items-center justify-center gap-2 text-mid"><Camera size={28} />No photo</Card>}
           {r.note && <Drop delay={0.1}><Sticky who={r.student}>"{r.note}"</Sticky></Drop>}
         </div>
         <div>
@@ -250,8 +250,8 @@ export function Closure() {
     <Page back title="Closure review" sub={`${r.room} · ${r.item} · closed by ${techName(r.tech)}`} right={<span className="flex items-center gap-2 font-mono text-[15px] text-mid">{queue.map((q, i) => <Dot key={q.id} tone={i < idx ? 'green' : i === idx ? 'sun' : 'faint'} />)}<span className="ml-1">{idx + 1} of {queue.length}</span></span>}>
       <div className="grid grid-cols-[1fr_360px] gap-12">
         <div className="relative flex items-start gap-6">
-          <Drop><Photo n={r.item === 'Chair' ? 'photo-chair' : 'photo-fan'} cap="before" /></Drop>
-          <Drop delay={0.1}><Photo n={r.item === 'Chair' ? 'photo-chair-after' : 'photo-fan'} cap="after" /></Drop>
+          <ArtIn><Photo n={r.item === 'Chair' ? 'photo-chair' : 'photo-fan'} cap="before" /></ArtIn>
+          <ArtIn delay={0.1}><Photo n={r.item === 'Chair' ? 'photo-chair-after' : 'photo-fan'} cap="after" /></ArtIn>
           <AnimatePresence>{stamp > 0 && <Stamp key={stamp} delay={0} onLand={fx.stamp} className="absolute left-[200px] top-[60px]"><div className="flex h-[120px] w-[120px] flex-col items-center justify-center rounded-full border-4 border-green bg-paper/80 text-green"><CheckIcon size={40} strokeWidth={3.5} /><span className="font-head text-[18px] font-extrabold tracking-[0.12em]">SIGNED</span></div></Stamp>}</AnimatePresence>
         </div>
         <div>
@@ -281,7 +281,7 @@ export function Forecast() {
         <motion.div className="absolute left-6 right-6 border-t-2 border-dashed border-ember" animate={{ bottom: 48 + cap * 20 }} transition={spring}><span className="absolute -top-6 right-0 text-[13px] font-semibold text-ember">what {trade === 'all' ? '4 technicians' : `your ${trade.toLowerCase()} team`} can do</span></motion.div>
         {data.map(([d, n], i) => (
           <div key={d} className="relative flex flex-col items-center">
-            <div className="flex flex-col-reverse gap-1.5">{Array.from({ length: n }, (_, k) => <motion.span key={`${trade}${k}`} layout initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ ...springPop, delay: i * 0.04 + k * 0.02 }}><Dot size={14} tone={k >= cap ? 'ember' : 'navy'} /></motion.span>)}</div>
+            <div className="flex flex-col-reverse gap-1.5">{Array.from({ length: n }, (_, k) => <motion.span key={`${trade}${k}`} className="block" layout initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1], delay: i * 0.03 + k * 0.015 }}><Dot size={14} tone={k >= cap ? 'ember' : 'navy'} /></motion.span>)}</div>
             <span className={cx('absolute -bottom-9 text-[14px] font-semibold', d === 'Tue' && !moved && 'text-ember')}>{d}</span>
           </div>
         ))}
