@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { FlaskConical, X, Volume2, VolumeX, RotateCcw, Keyboard } from '../ds/icons'
 import { useNav, Stage } from '../ds/nav'
-import { ToastHost, ToastOutlet, useToast, Tooltip, cx } from '../ds/ui'
+import { ToastHost, ToastOutlet, useToast, Tooltip, cx, LookProvider } from '../ds/ui'
 import { fx, setMuted, useMuted } from '../ds/fx'
 import { Ctx, Screen, Rail, NO_RAIL } from './shell'
 import * as V from './screens'
@@ -45,10 +45,10 @@ function Inner() {
           <div className="absolute bottom-6 right-6 z-40 flex flex-col items-end gap-3">
             <AnimatePresence>
               {sim && (
-                <motion.div initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 8, opacity: 0 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }} className="w-[320px] rounded-[20px] border-2 border-navy bg-paper p-4 shadow-lift">
-                  <div className="mb-1 flex items-center justify-between"><span className="font-head text-[18px] font-extrabold">Simulate</span><button aria-label="Close" onClick={() => setSim(false)} className="rounded-full p-1 hover:bg-navy/5"><X size={18} /></button></div>
+                <motion.div initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 8, opacity: 0 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }} className="w-[320px] rounded-[14px] border border-line bg-paper p-4 shadow-pop">
+                  <div className="mb-1 flex items-center justify-between"><span className="text-[15px] font-semibold">Simulate</span><button aria-label="Close" onClick={() => setSim(false)} className="rounded-full p-1 hover:bg-navy/5"><X size={18} /></button></div>
                   <p className="mb-3 text-[13px] text-mid">What students and technicians would do. For trying the desk.</p>
-                  <div className="flex flex-col gap-2">{actions.map(([l, f]) => <button key={l} onClick={() => { fx.tap(); setSim(false); f() }} className="rounded-[12px] border-2 border-royal bg-royal2 px-3 py-2 text-left text-[14px] font-bold text-royal shadow-[0_3px_0_#0E2DD2] active:translate-y-[3px] active:shadow-none">{l}</button>)}</div>
+                  <div className="flex flex-col gap-2">{actions.map(([l, f]) => <button key={l} onClick={() => { fx.tap(); setSim(false); f() }} className="rounded-[9px] border border-line bg-paper px-3 py-2 text-left text-[14px] font-medium text-navy hover:border-canal/50 hover:bg-canal2/50">{l}</button>)}</div>
                   <div className="mt-3 flex gap-2 border-t border-line pt-3">
                     <button onClick={() => setMuted(!muted)} className="flex items-center gap-1.5 rounded-[10px] px-2 py-1.5 text-[13px] font-semibold hover:bg-navy/5">{muted ? <VolumeX size={16} /> : <Volume2 size={16} />}{muted ? 'Sound off' : 'Sound on'}</button>
                     <button onClick={() => { store.reset(); nav.reset('login') }} className="flex items-center gap-1.5 rounded-[10px] px-2 py-1.5 text-[13px] font-semibold hover:bg-navy/5"><RotateCcw size={16} />Restart</button>
@@ -58,17 +58,17 @@ function Inner() {
               )}
             </AnimatePresence>
             <Tooltip label="Simulate events, sound, restart" side="left">
-              <motion.button aria-label="Simulate" onClick={() => { fx.tap(); setSim(!sim) }} whileTap={{ scale: 0.9 }} className={cx('flex h-14 w-14 items-center justify-center rounded-full border-2 border-navy text-white shadow-btn', sim ? 'bg-navy' : 'bg-royal')}><FlaskConical size={24} /></motion.button>
+              <motion.button aria-label="Simulate" onClick={() => { fx.tap(); setSim(!sim) }} whileTap={{ scale: 0.9 }} className={cx('flex h-12 w-12 items-center justify-center rounded-full text-white shadow-pop', sim ? 'bg-navy' : 'bg-canal')}><FlaskConical size={24} /></motion.button>
             </Tooltip>
           </div>
         )}
         <AnimatePresence>
           {keys && (
-            <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setKeys(false)}>
-              <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.98, y: 8 }} animate={{ scale: 1, y: 0 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }} className="w-[420px] rounded-[24px] border-2 border-navy bg-cream p-7 shadow-[0_6px_0_#00224E]">
-                <h2 className="font-head text-[24px] font-extrabold">Keyboard shortcuts</h2>
+            <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/35" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setKeys(false)}>
+              <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.98, y: 8 }} animate={{ scale: 1, y: 0 }} transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }} className="w-[420px] rounded-[16px] border border-line bg-paper p-6 shadow-pop">
+                <h2 className="font-head text-[22px] font-bold">Keyboard shortcuts</h2>
                 <div className="mt-4 grid grid-cols-[auto_1fr] gap-x-5 gap-y-2.5 text-[15px]">
-                  {[['1 – 8', 'Jump to a section'], ['/', 'Search on To check'], ['Esc', 'Close a dialog'], ['?', 'Show or hide this']].map(([k, d]) => <React.Fragment key={k}><kbd className="rounded-[8px] border-2 border-navy bg-paper px-2 py-0.5 text-center font-mono text-[14px]">{k}</kbd><span>{d}</span></React.Fragment>)}
+                  {[['1 – 8', 'Jump to a section'], ['/', 'Search on To check'], ['Esc', 'Close a dialog'], ['?', 'Show or hide this']].map(([k, d]) => <React.Fragment key={k}><kbd className="rounded-[6px] border border-line bg-cream px-2 py-0.5 text-center font-mono text-[13px]">{k}</kbd><span>{d}</span></React.Fragment>)}
                 </div>
               </motion.div>
             </motion.div>
@@ -78,4 +78,4 @@ function Inner() {
     </Ctx.Provider>
   )
 }
-export default function App() { return <ToastHost><Inner /></ToastHost> }
+export default function App() { return <LookProvider look="desk"><ToastHost><Inner /></ToastHost></LookProvider> }

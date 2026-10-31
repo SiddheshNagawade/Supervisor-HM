@@ -54,4 +54,4 @@ export type State = {
 export const store = createStore<State>('align.sup.v2', () => ({ signedIn: false, reps: reps(), bhawan: 'All blocks', promise: 3, autoEscalate: 5, missedRule: 2, quietFrom: '9:00 PM', forecastMoved: false }))
 export const setRep = (id: string, p: Partial<Rep>) => store.set(s => ({ reps: s.reps.map(r => (r.id === id ? { ...r, ...p } : r)) }))
 export const ageDays = (at: number) => Math.floor((Date.now() - at) / D)
-export const ageText = (at: number) => { const h = Math.round((Date.now() - at) / H); return h < 24 ? `${Math.max(1, h)} h` : `${Math.round(h / 24)} d` }
+export const ageText = (at: number) => { const h = Math.round((Date.now() - at) / H); return h < 24 ? `${Math.max(1, h)}h` : `${Math.round(h / 24)}d` }
