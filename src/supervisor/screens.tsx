@@ -102,6 +102,7 @@ export function Desk() {
   const chart = arts(s, n => n.n === 'dot' && n.w === 22 && n.y <= 470)
   const cols = [...new Set(chart.map(d => d.x))].sort((a, c) => a - c)
   return <Fig s={s} binds={B(
+    txt(589, `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, Meera.`),
     btn(591, () => store.set({ bhawan: (b + 1) % BHAWAN.length }), 'Change block'), txt(592, BHAWAN[b]),
     wrapAll(chart, n => drop(0.15 + cols.indexOf(n.x) * 0.12 + (468 - n.y) / 24 * 0.04)),
     { '232:732': { wrap: rev('y', 0.9, 0.7) } },
@@ -289,7 +290,7 @@ export function DisputeOne() {
     btn(2047, () => setModal({ kind: 'reassign', i, from: 'dispute' }), 'Reassign'),
   )} />
 }
-const PICK = ['2 jobs today. Free from 9:30 PM.', 'Most jobs today. Free from 10 PM.', 'Fewest jobs today. Free from 7:30 PM.']
+const PICK = ['2 jobs today. Free from 4:30 PM.', 'Most jobs today. Free only at 5:30 PM.', 'Fewest jobs today. Free from 3:30 PM.']
 export const reassignBinds = (close: () => void, m: NonNullable<Modal>, who: number, setWho: (n: number) => void, nav: NavApi<Screen>): Binds => B(
   { '234:469': { style: { animation: 'figfade .2s ease both' } } },
   txt('234:473', `Reassign ${m.from === 'blocked' ? 'Room ' + BLOCKED[m.i || 0].room : DISPUTES[m.i || 0].room}?`),
@@ -345,7 +346,7 @@ export function Team() {
     btn(2419, () => nav.go('rules', { tr: 'none' }), 'Notification rules'),
   )} />
 }
-const SHIFTS = ['5 to 10 PM', '2 to 7 PM', '9 AM to 2 PM']
+const SHIFTS = ['10 AM to 6 PM', '10 AM to 2 PM', '2 to 6 PM']
 const BLOCKSETS = [['BG, F, C', 'A, B', 'C, D', 'D, E'], ['A, B, C', 'D, E', 'BG, F', 'C']]
 export function Tech() {
   const { nav } = useApp()
@@ -366,7 +367,7 @@ const RULE_LINES: { pre: number; f: [number, number, string[]][]; tail: number[]
   { pre: 2526, f: [[2527, 2528, ['3 days', '2 days', '5 days']], [2530, 2531, ['me', 'the warden', 'the technician']]], tail: [2529, 2532] },
   { pre: 2533, f: [[2534, 2535, ['5 days', '3 days', '7 days']], [2537, 2538, ['the warden', 'me', 'the estate office']]], tail: [2536, 2539] },
   { pre: 2540, f: [[2541, 2542, ['twice', 'once', 'three times']], [2544, 2545, ['pick a new time', 'call the technician']]], tail: [2543, 2546] },
-  { pre: 2547, f: [[2548, 2549, ['evening at 9', 'morning at 8', 'evening at 7']]], tail: [2550] },
+  { pre: 2547, f: [[2548, 2549, ['evening at 6', 'morning at 10', 'afternoon at 2']]], tail: [2550] },
 ]
 let ctx2d: CanvasRenderingContext2D | null = null
 const measure = (s: string) => { ctx2d ??= document.createElement('canvas').getContext('2d'); ctx2d!.font = '800 30px "League Spartan"'; return ctx2d!.measureText(s).width }

@@ -79,7 +79,12 @@ const GROUPS: [string, [Screen, string][]][] = [
 
 function useFit() {
   const [k, setK] = useState(1)
-  useEffect(() => { const f = () => setK(Math.min(innerWidth / 1440, innerHeight / 900)); f(); addEventListener('resize', f); return () => removeEventListener('resize', f) }, [])
+  useEffect(() => {
+    // Fit the whole desk on screen. On a phone or a tablet held upright the fitted desk would be too small to read,
+    // so it keeps a readable size (never stretched, never cropped) and you scroll sideways instead.
+    const f = () => { const fit = Math.min(innerWidth / 1440, innerHeight / 900); setK(Math.max(fit, Math.min(0.62, innerHeight / 900))) }
+    f(); addEventListener('resize', f); return () => removeEventListener('resize', f)
+  }, [])
   return k
 }
 
@@ -109,8 +114,8 @@ export default function App() {
   ]
   return (
     <Ctx.Provider value={{ nav, setModal: (m: Modal) => { if (m) fx.pop(); setModal(m) } }}>
-      <div style={{ position: 'fixed', inset: 0, background: '#E9E1CF', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-        <div style={{ width: 1440 * k, height: 900 * k, flexShrink: 0 }}>
+      <div style={{ position: 'fixed', inset: 0, background: '#E9E1CF', overflow: 'auto', display: 'flex' }}>
+        <div style={{ width: 1440 * k, height: 900 * k, flexShrink: 0, margin: 'auto' }}>
           <div style={{ width: 1440, height: 900, transform: `scale(${k})`, transformOrigin: '0 0', position: 'relative', overflow: 'hidden', borderRadius: 28, background: '#FFFBF3' }}>
             <Stage nav={nav as never}><El /></Stage>
             {sel >= 0 && <Rail sel={sel} go={go} signOut={() => { fx.tap(); store.set({ signedIn: false }); go('signin') }} />}

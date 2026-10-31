@@ -9,7 +9,7 @@ export const EMAIL_OK = /^[a-z0-9][a-z0-9._-]*@([a-z0-9-]+\.)?iitr\.ac\.in$/i
 export type Row = { id: string; room: string; block: string; title: string; item: string; sub: string; age: string; late: boolean; dot: 'navy' | 'ring' | 'brick'
   quote: string; photo: 'fan' | 'chair' | null; dup: boolean }
 export const ROWS: Row[] = [
-  { id: 'r1', room: 'BG04', block: 'C', title: 'Fan not working', item: 'ceiling fan', sub: 'Block C · note + photo', age: '2h ago', late: false, dot: 'navy', quote: '“Fan stops after a few minutes. Free after 6 PM.”', photo: 'fan', dup: true },
+  { id: 'r1', room: 'BG04', block: 'C', title: 'Fan not working', item: 'ceiling fan', sub: 'Block C · note + photo', age: '2h ago', late: false, dot: 'navy', quote: '“Fan stops after a few minutes. Free after 2 PM.”', photo: 'fan', dup: true },
   { id: 'r2', room: 'F2', block: 'A', title: 'Router light is red', item: 'router', sub: 'Block A · no photo', age: '5h ago', late: false, dot: 'navy', quote: '“The light has been red since the morning.”', photo: null, dup: false },
   { id: 'r3', room: '118', block: 'D', title: 'Tap leaking under the sink', item: 'tap', sub: 'Block D · photo', age: '1d ago', late: false, dot: 'navy', quote: '“Water collects under the sink by night.”', photo: null, dup: false },
   { id: 'r4', room: 'B305', block: 'B', title: 'Chair broken, leg loose', item: 'chair', sub: 'Block B · photo', age: '4d ago', late: true, dot: 'ring', quote: '“One leg moves when I sit.”', photo: 'chair', dup: false },
@@ -19,10 +19,10 @@ export const ROWS: Row[] = [
 export const NEW_ROW: Row = { id: 'r7', room: 'C117', block: 'C', title: 'Geyser not heating', item: 'geyser', sub: 'Block C · note', age: 'just now', late: false, dot: 'navy', quote: '“No hot water since this morning.”', photo: null, dup: false }
 
 export const CLOSURES = [
-  { room: 'BG11', block: 'B', when: 'yesterday 8:52 PM', tech: 'Ravi', did: 'Capacitor replaced. Ran the fan for five minutes.' },
-  { room: 'C203', block: 'C', when: 'yesterday 7:40 PM', tech: 'Imran', did: 'Changed the washer and the spindle.' },
-  { room: 'A205', block: 'A', when: 'yesterday 6:15 PM', tech: 'Deepak', did: 'Replaced both hinges of the almirah.' },
-  { room: 'F1', block: 'A', when: 'yesterday 5:30 PM', tech: 'Sunil', did: 'New choke fitted in the corridor light.' },
+  { room: 'BG11', block: 'B', when: 'yesterday 4:52 PM', tech: 'Ravi', did: 'Capacitor replaced. Ran the fan for five minutes.' },
+  { room: 'C203', block: 'C', when: 'yesterday 3:40 PM', tech: 'Imran', did: 'Changed the washer and the spindle.' },
+  { room: 'A205', block: 'A', when: 'yesterday 1:15 PM', tech: 'Deepak', did: 'Replaced both hinges of the almirah.' },
+  { room: 'F1', block: 'A', when: 'yesterday 11:30 AM', tech: 'Sunil', did: 'New choke fitted in the corridor light.' },
   { room: 'B111', block: 'B', when: '2 days ago', tech: 'Ravi', did: 'Fixed the loose switchboard.' },
   { room: 'D102', block: 'D', when: '2 days ago', tech: 'Sunil', did: 'Cleaned the clogged drain.' },
 ]
@@ -53,7 +53,7 @@ export type State = {
   escalated: number[]; moved: boolean; leftAlone: boolean; bhawan: number; replaceSuggested: number[]
   rules: number[]; rulesSaved: boolean; shift: number[]; blockSet: number[]
 }
-export const store = createStore<State>('align.sup.fig.v1', () => ({
+export const store = createStore<State>('align.sup.fig.v2', () => ({
   signedIn: false, email: '', rows: ROWS, closureAt: 0, blockedLeft: [0, 1, 2, 3], disputesLeft: [0, 1, 2],
   escalated: [], moved: false, leftAlone: false, bhawan: 0, replaceSuggested: [], rules: [0, 0, 0, 0, 0, 0, 0], rulesSaved: false, shift: [0, 0, 0, 0], blockSet: [0, 0, 0, 0],
 }))
