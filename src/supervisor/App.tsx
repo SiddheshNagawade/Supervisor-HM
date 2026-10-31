@@ -1,41 +1,44 @@
 import { ReactNode, useEffect, useState } from 'react'
 import { Transition, useStack } from '../components/nav'
-import { Beaver, ErrorPage, Input, Paper, Pill } from '../components/ui'
+import { Art, ArtBox, Beaver, ErrorPage, Input, Pill } from '../components/ui'
 import { listRequests, setStatus, Req } from '../lib'
 
 type S = 'login' | 'home' | 'check' | 'review' | 'closure' | 'forecast' | 'blocked' | 'blockedOne' | 'disputes' | 'disputeOne' | 'fixtures' | 'fixtureOne' | 'team' | 'tech' | 'rules'
   | 'e404' | 'eOffline' | 'e500' | 'expired'
 type Nav = ReturnType<typeof useStack<S>>
 
-const RAIL: [S, string, string][] = [['home', 'Home', 'M3 11l9-8 9 8v10H3z'], ['check', 'To check', 'M3 5h18v10h-5l-2 3h-4l-2-3H3z'], ['forecast', 'Load forecast', 'M4 20V10M10 20V4M16 20v-8M22 20H2'],
-  ['blocked', 'Blocked', 'M12 3a9 9 0 100 18 9 9 0 000-18zM6 6l12 12'], ['disputes', 'Disputes', 'M5 21V4h12l-2 4 2 4H5'], ['fixtures', 'Fixtures', 'M4 20l4-1L19 8l-3-3L5 16z'], ['team', 'Team', 'M3 19l5-9 4 6 3-4 6 7z']]
+const RAIL: [S, string, string][] = [['home', 'Home', 'rail-home'], ['check', 'To check', 'rail-check'], ['forecast', 'Load forecast', 'rail-forecast'],
+  ['blocked', 'Blocked', 'rail-blocked'], ['disputes', 'Disputes', 'rail-disputes'], ['fixtures', 'Fixtures', 'rail-fixtures'], ['team', 'Team', 'rail-team']]
 const GROUP: Partial<Record<S, S>> = { review: 'check', closure: 'check', blockedOne: 'blocked', disputeOne: 'disputes', fixtureOne: 'fixtures', tech: 'team', rules: 'team' }
 
+/* Icons are the Figma SVGs, recoloured with a mask so they turn navy when selected */
+const RailIcon = ({ n, on }: { n: string; on: boolean }) => (
+  <span className="block w-[30px] h-[30px]" style={{ background: on ? '#00224E' : '#FFFBF3', WebkitMask: `url(/art/${n}.svg) center/contain no-repeat`, mask: `url(/art/${n}.svg) center/contain no-repeat` }} />
+)
 const Rail = ({ s, nav }: { s: S; nav: Nav }) => (
-  <nav className="w-16 bg-navy flex flex-col items-center py-4 gap-2 shrink-0 rounded-l-[16px]">
-    <button onClick={() => nav.reset('home')} aria-label="ALIGN" className="w-9 h-9 rounded-full bg-cream text-navy font-head font-extrabold mb-3">A</button>
-    {RAIL.map(([k, l, d]) => { const on = (GROUP[s] || s) === k; return (
-      <button key={k} title={l} aria-label={l} onClick={() => nav.reset(k)} className={`w-10 h-10 rounded-[10px] flex items-center justify-center ${on ? 'bg-cream' : ''}`}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={on ? '#00224E' : '#FFFBF3'} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"><path d={d} /></svg></button>) })}
-    <button onClick={() => nav.reset('login')} title="Sign out" className="mt-auto w-9 h-9 rounded-full bg-sky text-navy font-head font-extrabold text-[12px]">M</button>
+  <nav className="w-[88px] bg-navy flex flex-col items-center pt-5 shrink-0">
+    <button onClick={() => nav.reset('home')} aria-label="ALIGN" className="w-11 h-11 rounded-[12px] bg-cream text-navy font-head font-extrabold text-[24px] mb-[24px]">A</button>
+    {RAIL.map(([k, l, n]) => { const on = (GROUP[s] || s) === k; return (
+      <button key={k} title={l} aria-label={l} onClick={() => nav.reset(k)} className={`w-16 h-[50px] mb-[18px] rounded-[12px] flex items-center justify-center ${on ? 'bg-cream' : ''}`}><RailIcon n={n} on={on} /></button>) })}
+    <button onClick={() => nav.reset('login')} title="Sign out" className="mt-auto mb-[18px] w-[46px] h-[46px] rounded-full bg-sky text-navy border-2 border-cream font-head font-extrabold text-[16px]">M</button>
   </nav>
 )
 
 const Page = ({ s, nav, title, sub, right, children, banner, back }: { s: S; nav: Nav; title: string; sub?: string; right?: ReactNode; children: ReactNode; banner?: ReactNode; back?: boolean }) => (
   <div className="h-full flex bg-cream"><Rail s={s} nav={nav} />
     <main className="flex-1 min-w-0 flex flex-col overflow-hidden">{banner}
-      <div className="px-8 pt-6 pb-3 flex items-start justify-between gap-4 shrink-0"><div>
+      <div className="px-[52px] pt-9 pb-3 flex items-start justify-between gap-4 shrink-0"><div>
         {back && <button onClick={nav.back} className="text-[12px] text-mid underline mb-1 block">← Back</button>}
         <h1 className="font-head font-extrabold text-[34px] leading-tight">{title}</h1>{sub && <p className="text-[14px] text-mid mt-1">{sub}</p>}</div>{right}</div>
-      <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-8">{children}</div></main></div>
+      <div className="flex-1 min-h-0 overflow-y-auto px-[52px] pb-8">{children}</div></main></div>
 )
 
-const Fan = ({ size = 90 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 120 120" fill="none" stroke="#00224E" strokeWidth="3"><circle cx="60" cy="60" r="8" fill="#00224E" />{[0, 120, 240].map(r => <path key={r} transform={`rotate(${r} 60 60)`} d="M60 60C42 40 46 12 62 10 78 12 76 40 60 60Z" fill="#BDDDFF" />)}</svg>
+const Photo = ({ n, cap }: { n: string; cap?: string }) => <figure className="m-0"><Art n={n} w={330} />{cap && <figcaption className="text-[12.5px] text-mid -mt-8 ml-8 relative">{cap}</figcaption>}</figure>
+const SLIPS: Record<string, string> = { sun2: 'slip-student', sky: 'slip-tech', cream: 'slip-note' }
+const Note = ({ children, tone = 'cream', className = '', h = 120 }: { children: ReactNode; tone?: 'sun2' | 'sky' | 'cream'; className?: string; h?: number }) => (
+  <ArtBox n={SLIPS[tone]} className={className} style={{ minHeight: h, width: '100%' }}><div className="px-[26px] pt-[30px] pb-5 text-[14px]">{children}</div></ArtBox>
 )
-const Chair = () => <svg width="110" height="100" viewBox="0 0 110 100" fill="none" stroke="#00224E" strokeWidth="3"><path d="M30 10V90M30 52H90M90 52V90M50 52V90" /><rect x="26" y="40" width="68" height="12" fill="#BDDDFF" /></svg>
-const Frame = ({ children, cap, tilt = 0 }: { children: ReactNode; cap?: string; tilt?: number }) => <figure style={{ transform: `rotate(${tilt}deg)` }}><Paper className="p-3 flex items-center justify-center h-[150px] w-[170px]" tone="cream">{children}</Paper>{cap && <figcaption className="text-[11px] text-mid mt-1">{cap}</figcaption>}</figure>
-const Note = ({ children, tone = 'sun2', className = '' }: { children: ReactNode; tone?: 'sun2' | 'sky' | 'cream'; className?: string }) => <Paper tape tone={tone} className={`p-4 pt-5 text-[13px] ${className}`}>{children}</Paper>
+const Paper = ({ children, className = '' }: { children: ReactNode; className?: string; tone?: string; tape?: boolean }) => <div className={`border-[2.5px] border-navy rounded-[14px] bg-cream shadow-[0_3px_0_#00224E] ${className}`}>{children}</div>
 const Modal = ({ children, onClose }: { children: ReactNode; onClose: () => void }) => (
   <div className="absolute inset-0 bg-navy/55 flex items-center justify-center z-20" onClick={onClose}><div onClick={e => e.stopPropagation()}><Paper className="p-6 w-[460px]" tone="cream">{children}</Paper></div></div>
 )
@@ -44,7 +47,7 @@ const Dot = ({ c = 'bg-navy', ring }: { c?: string; ring?: boolean }) => <span c
 const TECHS = [['Ravi', 2], ['Imran', 3], ['Deepak', 1]] as const
 
 export default function App() {
-  const nav = useStack<S>('login')
+  const nav = useStack<S>((new URLSearchParams(location.search).get('s') as S) || 'login')
   const [reqs, setReqs] = useState<Req[]>([])
   const [online, setOnline] = useState(navigator.onLine)
   const [sel, setSel] = useState<Req | null>(null)
@@ -62,7 +65,7 @@ export default function App() {
 
   const view: Record<S, ReactNode> = {
     login: (
-      <div className="h-full flex rounded-[16px] overflow-hidden"><div className="w-[46%] bg-navy text-cream p-10 flex flex-col relative"><div className="font-head font-extrabold text-[28px] tracking-[.12em]">ALIGN</div>
+      <div className="h-full flex overflow-hidden"><div className="w-[46%] bg-navy text-cream p-10 flex flex-col relative"><div className="font-head font-extrabold text-[28px] tracking-[.12em]">ALIGN</div>
         <div className="flex items-end gap-4 mt-auto mb-10">{[7, 6, 4, 3].map((n, i) => <div key={i} className="flex flex-col-reverse gap-1.5">{Array.from({ length: n }, (_, k) => <span key={k} className={`w-3 h-3 rounded-full ${i === 3 && k === 2 ? 'bg-sun' : 'bg-cream'}`} />)}</div>)}</div>
         <h2 className="font-head font-extrabold text-[24px]">Every request, counted and visible.</h2><p className="text-[12.5px] mt-2 opacity-80">The desk for the people who keep a hostel running.</p></div>
         <form className="flex-1 flex flex-col justify-center px-[12%]" onSubmit={e => { e.preventDefault(); nav.reset('home') }}>
@@ -87,9 +90,9 @@ export default function App() {
       {tab === 'new' ? open.map((r, i) => <div key={r.id} className="flex items-center gap-4 py-4 border-b-2 border-navy"><Dot ring={i > 2} c={i === 5 ? 'bg-ember' : 'bg-navy'} /><span className="font-mono w-16">{r.room}</span><div className="flex-1"><div className="font-head font-extrabold text-[14px]">{r.fixture}</div><div className="text-[11px] text-mid">{r.block} - {r.photo ? 'note + photo' : 'no photo'}</div></div><span className={`font-mono text-[11px] ${/d ago/.test(r.age) && parseInt(r.age) >= 4 ? 'text-ember' : ''}`}>{r.age}</span><Pill variant={i === 0 ? 'primary' : 'secondary'} onClick={() => { setSel(r); nav.go('review') }}>Review</Pill></div>)
         : ['BG11', '203', 'F7', 'C310', 'D112', 'A205'].map((r, i) => <div key={r} className="flex items-center gap-4 py-4 border-b-2 border-navy"><Dot /><span className="font-mono w-16">{r}</span><div className="flex-1 font-head font-extrabold text-[14px]">{['Fan replacement', 'Tap leaking', 'Router light', 'Tube light', 'Door lock', 'Window latch'][i]} <span className="text-[11px] text-mid font-body">closed with the student's code</span></div><Pill onClick={() => { setClosure(i); nav.go('closure') }}>Review</Pill></div>)}</P>,
     review: <P back title="Review report" sub={`${sel?.room || 'BG04'} - ${sel?.block || 'Block C'} - sent ${sel?.age || '2 hours ago'}`}>
-      <div className="grid grid-cols-[230px_1fr] gap-10 mt-4"><div><Frame cap={`ceiling fan, ${sel?.room || 'BG04'}`} tilt={-1}><Fan /></Frame><Note className="mt-6 w-[200px] rotate-[1deg]">"{sel?.note || 'Fan stops after a few minutes. Free after 6 PM.'}"</Note></div>
+      <div className="grid grid-cols-[230px_1fr] gap-10 mt-4"><div><Photo n="photo-fan" cap={`ceiling fan, ${sel?.room || 'BG04'}`} /><Note className="mt-6" h={150}>"{sel?.note || 'Fan stops after a few minutes. Free after 6 PM.'}"</Note></div>
         <div><h2 className="font-head font-extrabold text-[14px] border-b-2 border-navy pb-1 flex justify-between">Looks like the same problem <span className="font-body text-[10px] text-ember">same fixture, same room</span></h2>
-          <Paper className="p-3 mt-3 flex items-center justify-between" tone="cream"><div><div className="font-head font-extrabold text-[13px]">BG04 - Fan stops after a minute</div><div className="text-[11px] text-mid">Sent 2 days ago by the roommate. Same room, same fan.</div></div><Pill variant="secondary" onClick={() => setModal('merge')}>Merge</Pill></Paper>
+          <ArtBox n="slip-wide" className="mt-3" style={{ height: 140 }}><div className="flex items-center justify-between px-[36px] pt-[40px]"><div><div className="font-head font-extrabold text-[13px]">BG04 - Fan stops after a minute</div><div className="text-[11px] text-mid">Sent 2 days ago by the roommate. Same room, same fan.</div></div><Pill variant="secondary" onClick={() => setModal('merge')}>Merge</Pill></div></ArtBox>
           <h2 className="font-head font-extrabold text-[14px] mt-6">Assign to</h2>
           <div className="flex gap-3 mt-2">{TECHS.map(([n, k]) => <button key={n} onClick={() => setTech(n)} className={`w-[130px] rounded-[12px] border-[2.5px] border-navy p-2 text-left ${tech === n ? 'bg-sun shadow-[0_3px_0_#00224E]' : 'bg-cream'}`}><div className="font-head font-extrabold text-[13px]">{n}</div><div className="flex gap-1 mt-1">{Array.from({ length: k }, (_, i) => <Dot key={i} />)}<span className="text-[10px] ml-1 text-mid">{k} today</span></div></button>)}</div>
           <p className="text-[12px] text-mid mt-4">Promise to the student: fixed within 3 days</p>
@@ -98,7 +101,7 @@ export default function App() {
         <div className="flex items-center gap-3 my-4"><Paper className="p-2 text-[11px] flex-1" tone="cream"><b>Fan not working</b><br />BG04 - today</Paper>→<Paper className="p-2 text-[11px] flex-1" tone="cream"><b>Fan stops after a minute</b><br />BG04 - 2 days ago</Paper></div>
         <div className="flex gap-3"><Pill onClick={async () => { if (sel) await setStatus(sel.id, 'merged'); await refresh(); setModal(null); nav.back() }}>Merge</Pill><Pill variant="secondary" onClick={() => setModal(null)}>Keep separate</Pill></div></Modal>}</P>,
     closure: <P back title="Closure review" sub={`${['BG11', '203', 'F7', 'C310', 'D112', 'A205'][closure]} - Block B - closed yesterday 8:52 PM by Ravi`}>
-      <div className="grid grid-cols-[1fr_300px] gap-10 mt-6"><div className="flex gap-6 items-start"><Frame cap="before" tilt={-1}><Fan /></Frame><Frame cap="after" tilt={2}><Fan /></Frame></div>
+      <div className="grid grid-cols-[1fr_300px] gap-10 mt-6"><div className="flex gap-6 items-start"><Photo n="photo-fan" cap="before" /><Photo n="photo-fan" cap="after" /></div>
         <div><h2 className="font-head font-extrabold text-[14px] border-b-2 border-navy pb-1">What Ravi did</h2><p className="text-[12px] mt-2">Capacitor replaced. Ran the fan for five minutes.</p>
           {['Closed with the student\'s code', 'Student said: fixed', 'After photo attached'].map(t => <div key={t} className="flex gap-2 items-center mt-3 text-[11.5px] font-head font-bold"><span className="w-4 h-4 rounded-full bg-green text-cream text-[10px] flex items-center justify-center">✓</span>{t}</div>)}
           <div className="flex gap-6 items-center mt-6"><Pill onClick={() => (closure < 5 ? setClosure(closure + 1) : nav.back())}>Accept closure</Pill><button onClick={() => nav.back()} className="text-[12px] text-ember underline">Send back</button></div></div></div>
@@ -106,7 +109,7 @@ export default function App() {
     forecast: <P title="Load forecast" sub="The next seven days: work expected against what four technicians can do.">
       <div className="relative h-[260px] mt-6 border-b-2 border-navy flex items-end justify-around"><div className="absolute left-0 right-0 border-t border-dashed border-navy" style={{ bottom: 150 }}><span className="absolute right-0 -top-4 text-[10px] text-mid">what four technicians can do</span></div>
         {[['Sat', 7], ['Sun', 6], ['Mon', 9], ['Tue', 11], ['Wed', 9], ['Thu', 6], ['Fri', 7]].map(([d, n]) => <div key={d as string} className="flex flex-col-reverse gap-1.5 items-center relative">{Array.from({ length: n as number }, (_, k) => <Dot key={k} c={k >= 8 ? 'bg-ember' : 'bg-navy'} />)}<span className="absolute -bottom-6 text-[11px] font-mono text-mid">{d}</span></div>)}</div>
-      <div className="flex items-center gap-8 mt-14"><Note className="w-[420px]">Tuesday has 4 jobs too many. Moving two to Monday keeps every promise.</Note><Pill>Move two to Monday</Pill><button className="text-[12px] text-ember underline">Leave it</button></div></P>,
+      <div className="flex items-center gap-8 mt-14"><Note className="w-[420px]" h={100}>Tuesday has 4 jobs too many. Moving two to Monday keeps every promise.</Note><Pill>Move two to Monday</Pill><button className="text-[12px] text-ember underline">Leave it</button></div></P>,
     blocked: <P title="Blocked" sub="Jobs that cannot move until something outside the team changes." right={<span className="text-[11px] text-mid">Tap a row to see the whole story</span>}>
       {[['340', 'Motor unit', 'Waiting for purchase approval', '6d'], ['B208', 'Geyser leaks', 'Vendor visit booked Tuesday', '4d'], ['F11', 'Door lock stuck', 'No router tap for this floor', '3d'], ['C102', 'Window glass cracked', 'Part not in stock', '3d']].map(([r, t, w, d], i) => (
         <button key={r} onClick={() => nav.go('blockedOne')} className={`w-full flex items-center gap-4 py-4 border-b-2 border-navy text-left ${i === 0 ? 'rounded-[8px] ring-2 ring-royal px-3' : ''}`}><Dot c="bg-ember" /><span className="font-mono w-14">{r}</span><span className="flex-1"><b className="font-head font-extrabold text-[14px]">{t}</b><br /><span className="text-[11px] text-mid">{w}</span></span><span className="font-head font-extrabold text-[22px] text-ember">{d}</span><span className="text-[11px] text-mid">blocked</span></button>))}</P>,
@@ -118,10 +121,10 @@ export default function App() {
     disputes: <P title="Disputes" sub="A student and a technician disagree about a closed job.">
       {[['B305', 'Chair', 'Still wobbly. The leg moves.', 'Ravi', 'Tightened the screw, tested it.', '1d'], ['F2', 'Router', 'Light is still red.', 'Imran', 'Light was green when I left.', '2d'], ['A301', 'Tap', 'It drips again.', 'Deepak', 'Changed the washer, no drip.', '3d']].map(([r, f, a, t, b, d], i) => (
         <div key={r} className="grid grid-cols-[90px_1fr_1fr_90px] gap-5 items-center py-5 border-t-2 border-navy first:mt-6"><div><div className="font-mono font-bold">{r}</div><div className="text-[11px] text-mid">{f}</div></div>
-          <Note tone="sun2" className="!p-3"><div className="text-[10px] text-ember">Student</div>"{a}"</Note><Note tone="sky" className="!p-3"><div className="text-[10px] text-mid">{t}</div>"{b}"</Note><div><Pill variant={i === 0 ? 'primary' : 'secondary'} onClick={() => nav.go('disputeOne')}>Open</Pill><div className="text-[10px] text-mid mt-1">{d} open</div></div></div>))}</P>,
+          <Note tone="sun2" h={110}><div className="text-[10px] text-ember">Student</div>"{a}"</Note><Note tone="sky" h={110}><div className="text-[10px] text-mid">{t}</div>"{b}"</Note><div><Pill variant={i === 0 ? 'primary' : 'secondary'} onClick={() => nav.go('disputeOne')}>Open</Pill><div className="text-[10px] text-mid mt-1">{d} open</div></div></div>))}</P>,
     disputeOne: <P back title="B305 · Chair" sub="The student says it is not fixed. Ravi says it is.">
-      <div className="grid grid-cols-[1fr_1fr_220px] gap-8 mt-4"><div><h2 className="font-head font-extrabold text-[13px] mb-2">Student says</h2><Note>"Still wobbly. The leg moves."</Note><div className="mt-4"><Frame cap="sent after the closure" tilt={-1}><Chair /></Frame></div></div>
-        <div><h2 className="font-head font-extrabold text-[13px] mb-2">Ravi says</h2><Note tone="sky">"Tightened the screw, tested it."</Note><div className="mt-4"><Frame cap="after photo - 8:41 PM" tilt={1}><Chair /></Frame></div></div>
+      <div className="grid grid-cols-[1fr_1fr_220px] gap-8 mt-4"><div><h2 className="font-head font-extrabold text-[13px] mb-2">Student says</h2><Note>"Still wobbly. The leg moves."</Note><div className="mt-4"><Photo n="photo-chair" cap="sent after the closure" /></div></div>
+        <div><h2 className="font-head font-extrabold text-[13px] mb-2">Ravi says</h2><Note tone="sky">"Tightened the screw, tested it."</Note><div className="mt-4"><Photo n="photo-chair-after" cap="after photo · 8:41 PM" /></div></div>
         <div><h2 className="font-head font-extrabold text-[14px] border-b-2 border-navy pb-1">Your call</h2><div className="flex flex-col gap-3 mt-4 items-start"><Pill>Reopen the job</Pill><Pill variant="secondary" onClick={nav.back}>Uphold the closure</Pill><Pill variant="secondary" onClick={() => setModal('reassign')}>Reassign</Pill></div><p className="text-[11px] text-mid mt-5">The student's photo came 3 hours after the closure.</p></div></div>
       {modal === 'reassign' && <Modal onClose={() => setModal(null)}><h2 className="font-head font-extrabold text-[19px]">Reassign B305?</h2><p className="text-[12px] mt-2">Pick who goes back. The student is told a new person is coming.</p>
         <div className="flex gap-3 mt-4">{TECHS.map(([n, k]) => <button key={n} onClick={() => setTech(n)} className={`flex-1 rounded-[12px] border-[2.5px] border-navy p-2 text-left ${tech === n ? 'bg-sun' : 'bg-cream'}`}><div className="font-head font-extrabold text-[13px]">{n}</div><div className="text-[10px] text-mid">{k} today</div></button>)}</div><p className="text-[11px] text-mid mt-3">Fewest jobs today. Free from 7:30 PM.</p>
@@ -147,15 +150,15 @@ export default function App() {
     e404: <Page s="home" nav={nav} title="" ><ErrorPage tone="sup" pose="think" title="We can't find that page." body="The link may be old, or this request was closed or merged into another one." primary={['Back to the desk', () => nav.reset('home')]} secondary={['Go to To check', () => nav.reset('check')]} /></Page>,
     eOffline: <Page s="home" nav={nav} title="" banner={<div className="bg-sun text-center text-[12px] font-head font-bold py-1.5">No connection - changes are paused until you're back online</div>}><ErrorPage tone="sup" pose="sit" title="You're offline." body="ALIGN can't reach the server. What you already loaded is still here and nothing is lost. We reconnect on our own." primary={['Try again', nav.back]} secondary={['View last loaded desk', () => nav.reset('home')]} /></Page>,
     e500: <Page s="home" nav={nav} title=""><ErrorPage tone="sup" pose="think" title="Something broke on our side." body="Your decisions are saved and our team has been told. Try again in a minute." primary={['Try again', () => { refresh(); nav.reset('home') }]} secondary={['Back to the desk', () => nav.reset('home')]} /></Page>,
-    expired: <div className="h-full flex rounded-[16px] overflow-hidden"><div className="w-[46%] bg-navy" /><form className="flex-1 flex flex-col justify-center px-[12%]" onSubmit={e => { e.preventDefault(); nav.reset('home') }}><h1 className="font-head font-extrabold text-[34px]">You were signed out.</h1><p className="text-[12px] text-mid mb-6">Sessions end after 30 minutes away. Sign in to pick up where you left off.</p><div className="space-y-4 max-w-[340px]"><Input label="Work email" defaultValue="meera@iitx.ac.in" /><Input label="Password" type="password" defaultValue="password1" /></div><div className="mt-6"><Pill type="submit">Sign in</Pill></div></form></div>,
+    expired: <div className="h-full flex overflow-hidden"><div className="w-[46%] bg-navy" /><form className="flex-1 flex flex-col justify-center px-[12%]" onSubmit={e => { e.preventDefault(); nav.reset('home') }}><h1 className="font-head font-extrabold text-[34px]">You were signed out.</h1><p className="text-[12px] text-mid mb-6">Sessions end after 30 minutes away. Sign in to pick up where you left off.</p><div className="space-y-4 max-w-[340px]"><Input label="Work email" defaultValue="meera@iitx.ac.in" /><Input label="Password" type="password" defaultValue="password1" /></div><div className="mt-6"><Pill type="submit">Sign in</Pill></div></form></div>,
   }
   const demo: [string, S][] = [['404', 'e404'], ['offline', 'eOffline'], ['500', 'e500'], ['signed out', 'expired']]
   return (
-    <div className="min-h-screen w-full bg-sand flex items-center justify-center p-4">
-      <div className="relative w-full max-w-[1280px] h-[calc(100vh-32px)] min-h-[620px] max-h-[820px] rounded-[18px] border-[2.5px] border-navy shadow-[0_6px_0_#00224E] bg-cream overflow-hidden">
+    <div className="fixed inset-0 bg-cream overflow-hidden">
+      <div className="relative w-full h-full min-w-[1100px]">
         <Transition id={s} dir={nav.dir} mode="fade">{view[s]}</Transition>
       </div>
-      <div className="fixed bottom-1 right-3 font-mono text-[10px] text-mid flex gap-2">demo: {demo.map(([l, k]) => <button key={k} className="underline" onClick={() => nav.go(k)}>{l}</button>)}</div>
+      <div className="fixed bottom-1 right-3 font-mono text-[10px] text-mid flex gap-2 z-30">demo: {demo.map(([l, k]) => <button key={k} className="underline" onClick={() => nav.go(k)}>{l}</button>)}</div>
     </div>
   )
 }
