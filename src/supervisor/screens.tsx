@@ -11,8 +11,6 @@ import { Hanging, peek } from '../fig/mascot'
 import FIG from './fig.json'
 import { store, EMAIL_OK, NEW_ROW, CLOSURES, BLOCKED, DISPUTES, FIXTURES, TEAM, Row } from './store'
 
-/* The beaver drawings from the Figma, by mood. */
-export const BEAVER = { wave: '227:313', cheer: '226:570', thumbs: '229:79', think: '226:910', point: '227:368' } as const
 const hideIds = (...ids: string[]): Binds => Object.fromEntries(ids.map(i => [i, { hide: true }]))
 export const S = (FIG as unknown as { screens: Record<string, FNode> }).screens
 export const RAILSETS = (FIG as unknown as { rail: string[][] }).rail
@@ -410,18 +408,18 @@ export function Rules() {
 /* ================= Errors ================= */
 export function E404() {
   const { nav } = useApp()
-  return <Fig s={S.e404} binds={B(hideIds('236:622', '236:628'), btn('236:630', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'), btn('236:632', () => nav.reset('check', { tr: 'none' }), 'Go to To check'))} extra={<Hanging art={BEAVER.cheer} sign="sign-board" cx={764} top={20} scale={1.55} title="We can't find that page." sub="It may be old, closed or merged." />} />
+  return <Fig s={S.e404} binds={B(hideIds('236:622', '236:628'), btn('236:630', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'), btn('236:632', () => nav.reset('check', { tr: 'none' }), 'Go to To check'))} extra={<Hanging cx={764} top={20} scale={1.3} title="We can't find that page." sub="It may be old, closed or merged." />} />
 }
 export function Offline() {
   const { nav } = useApp()
   const [tries, setTries] = useState(0)
   return <Fig s={S.offline} binds={B(hideIds('236:952', '236:958'),
     btn('236:960', () => { if (navigator.onLine) { fx.success(); nav.reset('desk', { tr: 'none' }) } else { fx.error(); setTries(t => t + 1); peek({ mood: 'think', say: 'Still no internet.', sub: tries ? `Tried ${tries + 1} times` : undefined }) } }, 'Try again'),
-    btn('236:962', () => nav.reset('desk', { tr: 'none' }), 'View last loaded desk'))} extra={<Hanging art={BEAVER.cheer} sign="sign-board" cx={764} top={20} scale={1.55} title="You're offline." sub="Reconnect to get the latest updates." />} />
+    btn('236:962', () => nav.reset('desk', { tr: 'none' }), 'View last loaded desk'))} extra={<Hanging cx={764} top={20} scale={1.3} title="You're offline." sub="Reconnect to get the latest updates." />} />
 }
 export function E500() {
   const { nav } = useApp()
-  return <Fig s={S.e500} binds={B(hideIds('236:1284', '236:1290'), btn('236:1292', () => nav.reset('desk', { tr: 'none' }), 'Try again'), btn('236:1294', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'))} extra={<Hanging art={BEAVER.cheer} sign="sign-board" cx={764} top={20} scale={1.55} title="Something broke on our side." sub="Your decisions are saved." />} />
+  return <Fig s={S.e500} binds={B(hideIds('236:1284', '236:1290'), btn('236:1292', () => nav.reset('desk', { tr: 'none' }), 'Try again'), btn('236:1294', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'))} extra={<Hanging cx={764} top={20} scale={1.3} title="Something broke on our side." sub="Your decisions are saved." />} />
 }
 
 export const SCREENS: Record<Screen, () => React.ReactElement> = {

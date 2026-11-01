@@ -7,7 +7,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { useNav, Stage } from '../ds/nav'
 import { Fig, figArt, FNode } from '../fig/Fig'
 import { fx, setMuted, useMuted } from '../ds/fx'
-import { BEAVER, Ctx, Modal, Screen, SCREENS, RAIL_OF, RAILSETS, S, mergeBinds, escalateBinds, reassignBinds } from './screens'
+import { Ctx, Modal, Screen, SCREENS, RAIL_OF, RAILSETS, S, mergeBinds, escalateBinds, reassignBinds } from './screens'
 import FIG from './fig.json'
 import { store, NEW_ROW } from './store'
 import { PeekHost, OfflineBuddy } from '../fig/mascot'
@@ -122,8 +122,8 @@ export default function App() {
           <div style={{ width: 1440, height: 900, transform: `scale(${k})`, transformOrigin: '0 0', position: 'relative', overflow: 'hidden', borderRadius: 28, background: '#FFFBF3' }}>
             <Stage nav={nav as never}><El /></Stage>
             {sel >= 0 && <Rail sel={sel} go={go} signOut={() => { fx.tap(); store.set({ signedIn: false }); go('signin') }} />}
-            <OfflineBuddy offline={!online} art={BEAVER.cheer} sign="sign-board" cx={764} scale={1.4} title="You're offline." sub="Reconnect to get the latest updates. What you loaded is still here." back={{ mood: 'wave', say: 'Back online!', side: 'right' }} />
-            <PeekHost arts={BEAVER} w={1440} h={900} size={320} side="right" />
+            <OfflineBuddy offline={!online} cx={764} scale={1.2} title="You're offline." sub="Reconnect to get the latest updates. What you loaded is still here." back={{ mood: 'wave', say: 'Back online!', side: 'right' }} />
+            <PeekHost w={1440} h={900} size={340} side="right" />
             {modal && <Dialog key={modal.kind} m={modal} close={() => { fx.tap(); setModal(null) }} nav={nav} />}
           </div>
         </div>
