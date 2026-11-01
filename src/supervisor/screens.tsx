@@ -19,7 +19,7 @@ export const RAILSETS = (FIG as unknown as { rail: string[][] }).rail
 export type Screen = 'signin' | 'desk' | 'check' | 'review' | 'closure' | 'forecast' | 'blocked' | 'blockedOne' | 'disputes' | 'disputeOne'
   | 'fixtures' | 'fixtureOne' | 'team' | 'tech' | 'rules' | 'e404' | 'offline' | 'e500' | 'expired'
 export type Modal = { kind: 'merge' | 'escalate' | 'reassign'; i?: number; from?: 'blocked' | 'dispute'; rowId?: string } | null
-type AppCtx = { nav: NavApi<Screen>; setModal: (m: Modal) => void }
+type AppCtx = { nav: NavApi<Screen>; setModal: (m: Modal) => void; busy: (fn: () => void) => void } // busy: the screwdriver rocket zooms across, then fn runs
 export const Ctx = createContext<AppCtx>(null!)
 const useApp = () => useContext(Ctx)
 const P = <T,>(nav: NavApi<Screen>, k: string, d: T) => (nav.params[k] as T) ?? d
@@ -161,11 +161,11 @@ export function Check() {
 const CHIPS = [['232:1044', 'Ravi'], ['232:1055', 'Imran'], ['232:1070', 'Deepak']]
 const done = (rowId: string) => store.set(s => ({ rows: s.rows.filter(r => r.id !== rowId) }))
 export function Review() {
-  const { nav, setModal } = useApp()
+  const { nav, setModal, busy } = useApp()
   const rows = store.use(x => x.rows)
   const r: Row = rows.find(x => x.id === P(nav, 'id', 'r1')) || rows[0] || NEW_ROW
   const [who, setWho] = useState(0)
-  const finish = () => { fx.stamp(); peek({ mood: 'cheer', say: `${CHIPS[who][1]} has it.`, sub: `${r.room} · ${r.title}` }); done(r.id); nav.reset('check', { tr: 'none' }) }
+  const finish = () => busy(() => { fx.stamp(); peek({ mood: 'cheer', say: `${CHIPS[who][1]} has it.`, sub: `${r.room} · ${r.title}` }); done(r.id); nav.reset('check', { tr: 'none' }) })
   return <Fig s={S.review} binds={B(
     txt(1011, `${r.room} · Block ${r.block} · sent ${r.age.replace(/^1d ago$/, 'yesterday').replace(/(\d+)h ago/, '$1 hours ago').replace(/(\d+)d ago/, '$1 days ago')}`),
     r.photo ? { '232:1012': { art: r.photo === 'chair' ? '232:2013' : undefined, wrap: place(0.1) } } : hide(1012, 1025),
@@ -180,10 +180,10 @@ export function Review() {
     { '232:1080': { onClick: () => { fx.tap(); done(r.id); nav.reset('check', { tr: 'none' }) } } },
   )} />
 }
-export const mergeBinds = (close: () => void, nav: NavApi<Screen>, rowId?: string): Binds => B(
+export const mergeBinds = (close: () => void, nav: NavApi<Screen>, rowId: string | undefined, busy: (fn: () => void) => void): Binds => B(
   { '232:1183': { style: { animation: 'figfade .2s ease both' } } },
   { '232:1193': { wrap: place(0.15) }, '232:1199': { wrap: place(0.3) }, '232:1205': { wrap: rev('x', 0.45, 0.5) } },
-  btn(1189, () => { fx.stamp(); peek({ mood: 'cheer', say: 'Merged into one job.' }); if (rowId) done(rowId); close(); nav.reset('check', { tr: 'none' }) }, 'Merge'),
+  btn(1189, () => busy(() => { fx.stamp(); peek({ mood: 'cheer', say: 'Merged into one job.' }); if (rowId) done(rowId); close(); nav.reset('check', { tr: 'none' }) }), 'Merge'),
   btn(1191, close, 'Keep separate'),
 )
 
@@ -269,13 +269,13 @@ export function BlockedOne() {
     esc ? txt(1795, 'escalated to the warden · you stay on the job') : {},
   )} />
 }
-export const escalateBinds = (close: () => void, i: number, who: number, setWho: (n: number) => void, note: string, setNote: (s: string) => void): Binds => B(
+export const escalateBinds = (close: () => void, i: number, who: number, setWho: (n: number) => void, note: string, setNote: (s: string) => void, busy: (fn: () => void) => void): Binds => B(
   { '234:377': { style: { animation: 'figfade .2s ease both' } } },
   txt('234:381', `Escalate Room ${BLOCKED[i].room}?`),
   { '234:383': { onClick: () => { fx.select(); setWho(0) }, label: 'Warden', style: { background: who === 0 ? '#FFD265' : '#FFFBF3' } } },
   { '234:385': { onClick: () => { fx.select(); setWho(1) }, label: 'Estate office', style: { background: who === 1 ? '#FFD265' : '#FFFBF3' } } },
   field('234:387', note, setNote, { width: 516, placeholder: 'Add a line for them' }),
-  btn('234:389', () => { fx.stamp(); peek({ mood: 'point', say: `Sent to the ${who ? 'estate office' : 'warden'}.`, sub: 'You stay on the job.' }); store.set(s => ({ escalated: [...s.escalated, i] })); close() }, 'Escalate'),
+  btn('234:389', () => busy(() => { fx.stamp(); peek({ mood: 'point', say: `Sent to the ${who ? 'estate office' : 'warden'}.`, sub: 'You stay on the job.' }); store.set(s => ({ escalated: [...s.escalated, i] })); close() }), 'Escalate'),
   btn('234:391', close, 'Cancel'),
 )
 
@@ -314,15 +314,15 @@ export function DisputeOne() {
   )} />
 }
 const PICK = ['2 jobs today. Free from 4:30 PM.', 'Most jobs today. Free only at 5:30 PM.', 'Fewest jobs today. Free from 3:30 PM.']
-export const reassignBinds = (close: () => void, m: NonNullable<Modal>, who: number, setWho: (n: number) => void, nav: NavApi<Screen>): Binds => B(
+export const reassignBinds = (close: () => void, m: NonNullable<Modal>, who: number, setWho: (n: number) => void, nav: NavApi<Screen>, busy: (fn: () => void) => void): Binds => B(
   { '234:469': { style: { animation: 'figfade .2s ease both' } } }, hide('234:424'),
   txt('234:473', `Reassign ${m.from === 'blocked' ? 'Room ' + BLOCKED[m.i || 0].room : DISPUTES[m.i || 0].room}?`),
   ...[['234:475', 'Ravi'], ['234:486', 'Imran'], ['234:501', 'Deepak']].map(([c, name], k) => ({ [c]: { onClick: () => { fx.select(); setWho(k) }, label: name, style: { background: who === k ? '#FFD265' : '#FFFBF3' } } })),
   txt('234:508', PICK[who]),
-  btn('234:509', () => {
+  btn('234:509', () => busy(() => {
     fx.stamp(); peek({ mood: 'cheer', say: `${['Ravi', 'Imran', 'Deepak'][who]} is on it.` }); close()
     if (m.from === 'dispute') { store.set(s => ({ disputesLeft: s.disputesLeft.filter(x => x !== m.i) })); nav.reset('disputes', { tr: 'none' }) }
-  }, 'Reassign'),
+  }), 'Reassign'),
   btn('234:511', close, 'Cancel'),
 )
 
@@ -395,6 +395,7 @@ const RULE_LINES: { pre: number; f: [number, number, string[]][]; tail: number[]
 let ctx2d: CanvasRenderingContext2D | null = null
 const measure = (s: string) => { ctx2d ??= document.createElement('canvas').getContext('2d'); ctx2d!.font = '800 30px "League Spartan"'; return ctx2d!.measureText(s).width }
 export function Rules() {
+  const { busy } = useApp()
   const rules = store.use(x => x.rules), saved = store.use(x => x.rulesSaved)
   const [, force] = useState(0)
   useEffect(() => { document.fonts?.ready.then(() => force(x => x + 1)) }, [])
@@ -421,7 +422,7 @@ export function Rules() {
     }
   })
   return <Fig s={S.rules} binds={B(...binds,
-    btn(2554, () => { fx.success(); store.set({ rulesSaved: true }); peek({ mood: 'thumbs', say: 'Rules saved.', ms: 1800 }) }, 'Save rules'),
+    btn(2554, () => busy(() => { fx.success(); store.set({ rulesSaved: true }); peek({ mood: 'thumbs', say: 'Rules saved.', ms: 1800 }) }), 'Save rules'),
     saved ? txt(2555, 'Saved ✓') : {},
   )} />
 }

@@ -11,6 +11,7 @@ import { Ctx, Modal, Screen, SCREENS, RAIL_OF, RAILSETS, S, mergeBinds, escalate
 import FIG from './fig.json'
 import { store, NEW_ROW } from './store'
 import { PeekHost, OfflineBuddy } from '../fig/mascot'
+import { ToolOverlay } from '../fig/extras'
 
 const RAW = (FIG as unknown as { screens: Record<string, FNode> }).screens
 const from = (s: FNode, firstId: string, skip: string[] = []): FNode => {
@@ -82,9 +83,10 @@ function Rail({ sel, go, signOut, open, setOpen, H }: { sel: number; go: (s: Scr
 function Dialog({ m, close, nav }: { m: NonNullable<Modal>; close: () => void; nav: ReturnType<typeof useNav<Screen>> }) {
   const [who, setWho] = useState(m.kind === 'reassign' ? 2 : 0)
   const [note, setNote] = useState('')
-  const binds = m.kind === 'merge' ? mergeBinds(close, nav, m.rowId)
-    : m.kind === 'escalate' ? escalateBinds(close, m.i || 0, who, setWho, note, setNote)
-    : reassignBinds(close, m, who, setWho, nav)
+  const { busy } = React.useContext(Ctx)
+  const binds = m.kind === 'merge' ? mergeBinds(close, nav, m.rowId, busy)
+    : m.kind === 'escalate' ? escalateBinds(close, m.i || 0, who, setWho, note, setNote, busy)
+    : reassignBinds(close, m, who, setWho, nav, busy)
   const f = modalFrame(m.kind)
   // the dialog card and its contents rise in once; the scrim fades
   const scrim = f.k![0].i
@@ -122,6 +124,7 @@ export default function App() {
   const [modal, setModal] = useState<Modal>(null)
   const [online, setOnline] = useState(navigator.onLine)
   const [panel, setPanel] = useState(false)
+  const [job, setJob] = useState<{ fn: () => void } | null>(null) // an action waiting for the screwdriver rocket to cross the screen
   const muted = useMuted()
   const [open, setOpenState] = useState(() => { try { return localStorage.getItem('align.sup.rail') === '1' } catch { return false } })
   const setOpen = (v: boolean) => { setOpenState(v); try { localStorage.setItem('align.sup.rail', v ? '1' : '0') } catch { /* no memory in a private window */ } }
@@ -147,7 +150,7 @@ export default function App() {
     ['Session times out', () => { store.set({ signedIn: false }); go('expired') }],
   ]
   return (
-    <Ctx.Provider value={{ nav, setModal: (m: Modal) => { if (m) fx.pop(); setModal(m) } }}>
+    <Ctx.Provider value={{ nav, setModal: (m: Modal) => { if (m) fx.pop(); setModal(m) }, busy: (fn: () => void) => { if (!job) setJob({ fn }) } }}>
       <div style={{ position: 'fixed', inset: 0, background: '#FFFBF3', overflow: 'auto' }}>
         <div style={{ width: W * k, height: H * k }}>
           <div style={{ width: W, height: H, transform: `scale(${k})`, transformOrigin: '0 0', transition: 'transform .3s cubic-bezier(.22,1,.36,1)', position: 'relative', overflow: 'hidden', background: '#FFFBF3' }}>
@@ -163,6 +166,7 @@ export default function App() {
             </> })()}
             <OfflineBuddy offline={!online} cx={frameLeft + 764} scale={1.2} title="You're offline." sub="Reconnect to get the latest updates. What you loaded is still here." back={{ mood: 'wave', say: 'Back online!', side: 'right' }} />
             <PeekHost w={W} h={H} size={340} side="right" />
+            {job && <ToolOverlay kind="rocket" bg="rgba(255,251,243,.9)" ms={1300} label="Working on it" onDone={() => { const f = job.fn; setJob(null); f() }} />}
           </div>
         </div>        <div style={{ position: 'fixed', right: 16, bottom: 16, zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
           {panel && (
