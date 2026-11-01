@@ -7,6 +7,7 @@ import { Fig, FNode, Binds, textStyle } from '../fig/Fig'
 import { Reveal, Slap, PlaceDown, Settle } from '../fig/anim'
 import { NavApi } from '../ds/nav'
 import { fx } from '../ds/fx'
+import { Shot } from '../ds/camera'
 import { Hanging, peek } from '../fig/mascot'
 import { ScoreDial, InkStamp } from '../fig/extras'
 import FIG from './fig.json'
@@ -33,6 +34,24 @@ const txt = (n: string | number, text: ReactNode, style?: React.CSSProperties): 
 const hide = (...ns: (string | number)[]): Binds => Object.fromEntries(ns.map(n => [id(n), { hide: true }]))
 const wrapAll = (ns: FNode[], fn: (n: FNode, i: number) => (el: ReactNode) => ReactNode): Binds => Object.fromEntries(ns.map((n, i) => [n.i, { wrap: (el: ReactNode) => fn(n, i)(el) }]))
 const arts = (s: FNode, pred: (n: FNode) => boolean) => (s.k || []).filter(n => n.art && pred(n))
+
+/** Real photographs, with a paper-coloured chip behind any caption that sits on top of one. */
+const PH = (n: string) => `${import.meta.env.BASE_URL}photos/${n}.jpg`
+const CAP: React.CSSProperties = { background: '#FFFBF3', padding: '1px 9px', borderRadius: 9, width: 'auto', border: '2px solid #00224E', boxSizing: 'border-box' }
+
+/** Round back button, left of the page title (same drawing as the technician app's). Goes to the list this screen was opened from. */
+function BackBtn({ to, label }: { to: Screen; label: string }) {
+  const { nav } = useApp()
+  return (
+    <button type="button" aria-label={label} title={label} onClick={() => { fx.tap(); nav.reset(to, { tr: 'none' }) }} className="fig-press"
+      style={{ position: 'absolute', left: 84, top: 41, width: 44, height: 44, padding: 0, border: 0, background: 'none', cursor: 'pointer' }}>
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" style={{ display: 'block' }}>
+        <circle cx="22" cy="22" r="20.75" fill="#FFFBF3" stroke="#00224E" strokeWidth="2.5" />
+        <path d="M25 13L16 22L25 31" stroke="#00224E" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  )
+}
 
 /* ---------- one-time motions for the drawings ---------- */
 function Drop({ children, delay }: { children: ReactNode; delay: number }) {
@@ -97,7 +116,7 @@ export const SignIn = () => <SignInLike s={S.signin} ids={{ email: '232:551', pa
 export const Expired = () => <SignInLike s={S.expired} ids={{ email: '236:1377', pass: '236:1380', r1: '236:1378', r2: '236:1381', go: '236:1382', forgot: '236:1384', l1: '236:1376', l2: '236:1379' }} />
 
 /* ================= Desk ================= */
-const BHAWAN = ['Himalya Bhawan · all blocks  ⌄', 'Himalya Bhawan · Block A  ⌄', 'Himalya Bhawan · Block B  ⌄', 'Himalya Bhawan · Block C  ⌄', 'Himalya Bhawan · Block D  ⌄']
+const BHAWAN = ['Himalaya Bhawan · all blocks  ⌄', 'Himalaya Bhawan · Block A  ⌄', 'Himalaya Bhawan · Block B  ⌄', 'Himalaya Bhawan · Block C  ⌄', 'Himalaya Bhawan · Block D  ⌄']
 export function Desk() {
   const { nav, setModal } = useApp()
   const b = store.use(x => x.bhawan)
@@ -122,7 +141,7 @@ export function Desk() {
     { '232:759': { wrap: rev('x', 0.5) }, '232:789': { wrap: rev('x', 0.6) }, '232:813': { wrap: rev('x', 0.7) }, '232:833': { wrap: rev('x', 0.8) } },
     ...['785', '809', '829', '845'].map((g, i) => ({ [id(g)]: { onClick: () => { fx.tap(); nav.reset('check', { tr: 'none' }) }, label: 'Open ' + ['Block C', 'Block A', 'Block D', 'Block B'][i] } })),
     { '232:849': { wrap: pop(0.5) }, '232:860': { wrap: pop(0.6) }, '232:868': { wrap: pop(0.7) } },
-    { '232:875': { wrap: rev('x', 1.3, 1.1) } },
+    hide(875), // the dotted designer's arrow from the chart to the list is not part of the product
     btn(855, () => { nav.go('blockedOne', { tr: 'none', p: { i: 0 } }); setModal({ kind: 'escalate', i: 0 }) }, 'Escalate'),
     btn(857, () => nav.go('blockedOne', { tr: 'none', p: { i: 0 } }), 'Reassign'),
     btn(865, () => nav.go('closure', { tr: 'none' }), 'Review all'),
@@ -166,13 +185,13 @@ export function Review() {
   const r: Row = rows.find(x => x.id === P(nav, 'id', 'r1')) || rows[0] || NEW_ROW
   const [who, setWho] = useState(0)
   const finish = () => busy(() => { fx.stamp(); peek({ mood: 'cheer', say: `${CHIPS[who][1]} has it.`, sub: `${r.room} · ${r.title}` }); done(r.id); nav.reset('check', { tr: 'none' }) })
-  return <Fig s={S.review} binds={B(
+  return <Fig s={S.review} need={r.photo ? [PH(r.photo)] : []} extra={<BackBtn to="check" label="Back to the check list" />} binds={B(
     txt(1011, `${r.room} · Block ${r.block} · sent ${r.age.replace(/^1d ago$/, 'yesterday').replace(/(\d+)h ago/, '$1 hours ago').replace(/(\d+)d ago/, '$1 days ago')}`),
-    r.photo ? { '232:1012': { art: r.photo === 'chair' ? '232:2013' : undefined, wrap: place(0.1) } } : hide(1012, 1025),
-    r.photo === 'chair' ? { '232:1025': { text: `${r.item}, ${r.room}`, dy: -50 } } : txt(1025, `${r.item}, ${r.room}`),
+    r.photo ? { '232:1012': { render: () => <Shot src={PH(r.photo!)} w={330} h={310} r={14} />, wrap: place(0.1) } } : hide(1012, 1025),
+    txt(1025, `${r.item}, ${r.room}`, CAP),
     r.photo ? { '232:1026': { wrap: slap(0.4) } } : { '232:1026': { wrap: slap(0.25), dy: -344 }, '232:1031': { dy: -344 } },
-    txt(1031, r.quote),
-    r.dup ? { '232:1034': { wrap: place(0.55) } } : hide(1032, 1033, 1034, 1038, 1039, 1040, 1041, 1042),
+    txt(1031, r.quote), hide(1042), // "same fixture, same room" was a designer's note
+    r.dup ? { '232:1034': { wrap: place(0.55) } } : hide(1032, 1033, 1034, 1038, 1039, 1040, 1041),
     btn(1040, () => setModal({ kind: 'merge', rowId: r.id }), 'Merge'),
     ...CHIPS.map(([c, name], i) => ({ [c]: { onClick: () => { fx.select(); setWho(i) }, label: 'Assign to ' + name, style: { background: who === i ? '#FFD265' : '#FFFBF3' } } })),
     { '232:1046': { wrap: pop(0.7) }, '232:1050': { wrap: pop(0.75) }, '232:1057': { wrap: pop(0.8) }, '232:1061': { wrap: pop(0.85) }, '232:1065': { wrap: pop(0.9) }, '232:1072': { wrap: pop(0.95) } },
@@ -181,7 +200,7 @@ export function Review() {
   )} />
 }
 export const mergeBinds = (close: () => void, nav: NavApi<Screen>, rowId: string | undefined, busy: (fn: () => void) => void): Binds => B(
-  { '232:1183': { style: { animation: 'figfade .2s ease both' } } },
+  { '232:1183': { style: { animation: 'figfade .2s ease both' } } }, hide('232:1144'),
   { '232:1193': { wrap: place(0.15) }, '232:1199': { wrap: place(0.3) }, '232:1205': { wrap: rev('x', 0.45, 0.5) } },
   btn(1189, () => busy(() => { fx.stamp(); peek({ mood: 'cheer', say: 'Merged into one job.' }); if (rowId) done(rowId); close(); nav.reset('check', { tr: 'none' }) }), 'Merge'),
   btn(1191, close, 'Keep separate'),
@@ -204,9 +223,10 @@ export function Closure() {
       if (at + 1 >= CLOSURES.length) { store.set({ closureAt: CLOSURES.length }); nav.reset('check', { tr: 'none' }) } else store.set({ closureAt: at + 1 })
     }, 900)
   }
-  return <Fig key={at} s={S.closure} extra={stamped ? <div style={{ position: 'absolute', left: 770, top: 400, zIndex: 5 }}><InkStamp size={138} /></div> : undefined} binds={B(
-    txt(1239, `${c.room} · Block ${c.block} · closed ${c.when} by ${c.tech}`), txt(1269, `What ${c.tech} did`), txt(1271, c.did), hide(1316),
-    { '232:1240': { wrap: place(0.1) }, '232:1254': { wrap: place(0.35) } },
+  return <Fig key={at} s={S.closure} need={[PH(c.photo), PH('fan-before')]} extra={<>{stamped && <div style={{ position: 'absolute', left: 770, top: 400, zIndex: 5 }}><InkStamp size={138} /></div>}<BackBtn to="check" label="Back to the check list" /></>} binds={B(
+    txt(1239, `${c.room} · Block ${c.block} · closed ${c.when} by ${c.tech}`), txt(1269, `What ${c.tech} did`), txt(1271, c.did), hide(1316, 1268),
+    { '232:1240': { render: () => <Shot src={PH(c.photo === 'fan' ? 'fan-before' : c.photo)} w={360} h={320} r={14} rot={-1.5} imgStyle={{ filter: 'saturate(.5) brightness(.82)' }} />, wrap: place(0.1) }, '232:1254': { render: () => <Shot src={PH(c.photo)} w={360} h={320} r={14} rot={1.5} />, wrap: place(0.35) } },
+    { '232:1253': { style: CAP }, '232:1267': { style: CAP } },
     { '232:1272': { wrap: pop(0.7, fx.check) }, '232:1277': { wrap: pop(0.85, fx.check) }, '232:1282': { wrap: pop(1.0, fx.check) } },
     ...PROG.map((p, k) => ({ [p]: { art: k === at ? '232:1290' : k === 0 ? '232:1296' : undefined } })),
     btn(1287, next, 'Accept closure'),
@@ -232,8 +252,8 @@ export function Forecast() {
     ...MOVERS.map((id, k) => mover(dots.find(d => d.i === id)!, k)),
     hidden,
     txt(1522, '+2 over', { top: 260 }), txt(1642, 'Tuesday has 2 jobs too many. Moving two to Monday keeps every promise.'),
-    { '232:1631': { wrap: rev('x', 1.0, 1.0) }, '232:1635': { wrap: rev('x', 1.5, 0.6) }, '232:1637': { wrap: slap(1.2) } },
-    moved ? B(hide(1522), txt(1634, 'Tuesday is fine now', { color: '#3E4F72' })) : {},
+    { '232:1631': { wrap: rev('x', 1.0, 1.0) }, '232:1637': { wrap: slap(1.2) } }, hide(1634, 1635), // the "Tuesday is the squeeze" note and its arrow were designer's notes
+    moved ? hide(1522) : {},
     moved ? txt(1642, 'Done. Two Tuesday jobs now go on Monday, inside their promise.') : left ? txt(1642, 'Okay. Tuesday stays as it is. ALIGN will warn the team on Monday night.') : {},
     btn(1643, () => { fx.success(); store.set({ moved: true }); setTimeout(() => peek({ mood: 'thumbs', say: 'Tuesday is lighter now.' }), 900) }, 'Move two to Monday'),
     { '232:1645': { onClick: () => { fx.tap(); store.set({ leftAlone: true }) } } },
@@ -243,6 +263,20 @@ export function Forecast() {
 
 /* ================= Blocked ================= */
 const BL = [[1681, 1685, 1686, 1687, 1688], [1691, 1695, 1696, 1697, 1698], [1701, 1705, 1706, 1707, 1708], [1711, 1715, 1716, 1717, 1718]]
+/** The three numbers under the blocked list: how many, how long, and what is waiting on whom. */
+function BlockedGlance() {
+  const cards: [string, string][] = [['4', 'jobs are blocked'], ['6 days', 'the longest wait'], ['2', 'waiting for a part or a purchase']]
+  return (
+    <div style={{ position: 'absolute', left: 140, top: 690, width: 1210, display: 'flex', gap: 24, pointerEvents: 'none' }}>
+      {cards.map(([n, l], i) => (
+        <div key={i} style={{ flex: 1, height: 112, boxSizing: 'border-box', borderRadius: 18, border: '2.5px solid #00224E', background: i === 1 ? '#FFF1C7' : '#FFFBF3', boxShadow: '3px 4px 0 #00224E', padding: '16px 22px' }}>
+          <div style={{ font: '800 38px/42px "League Spartan", sans-serif', color: i === 1 ? '#B8530A' : '#00224E' }}>{n}</div>
+          <div style={{ font: '500 15px/20px "DM Mono", monospace', color: '#3E4F72', marginTop: 4 }}>{l}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
 export function Blocked() {
   const { nav } = useApp()
   const [hov, setHov] = useState(0)
@@ -250,11 +284,11 @@ export function Blocked() {
     { '232:1680': { dy: hov * 120, style: { transition: 'top .18s cubic-bezier(.22,1,.36,1)' } } },
     { '232:1685': { style: { left: 216 } } },
     ...BL.map((r, j) => ({ [id(r[0])]: { wrap: pop(0.15 + j * 0.1) } })),
-  )} extra={BLOCKED.map((b, j) => (
+  )} need={BLOCKED.map(b => PH(b.photo))} extra={<>{BLOCKED.map((b, j) => (<div key={'p' + j} style={{ position: 'absolute', left: 940, top: 208 + 120 * j, pointerEvents: 'none' }}><Shot src={PH(b.photo)} w={104} h={66} r={10} style={{ boxShadow: '2px 3px 0 #00224E' }} /></div>))}<BlockedGlance />{BLOCKED.map((b, j) => (
     <button key={j} type="button" aria-label={`Room ${b.room} · ${b.title}`} onMouseEnter={() => setHov(j)} onFocus={() => setHov(j)}
       onClick={() => { fx.tap(); nav.go('blockedOne', { tr: 'none', p: { i: j } }) }}
       style={{ position: 'absolute', left: 140, top: 194 + 120 * j, width: 1210, height: 92, background: 'transparent', border: 0, cursor: 'pointer', borderRadius: 16 }} />
-  ))} />
+  ))}</>} />
 }
 export function BlockedOne() {
   const { nav, setModal } = useApp()
@@ -262,7 +296,7 @@ export function BlockedOne() {
   const b = BLOCKED[i]
   const esc = store.use(x => x.escalated.includes(i))
   const [called, setCalled] = useState(false)
-  return <Fig s={S.blockedOne} binds={B(
+  return <Fig s={S.blockedOne} extra={<BackBtn to="blocked" label="Back to blocked jobs" />} binds={B(
     txt(1751, `Room ${b.room} · ${b.title}`), txt(1752, b.sub),
     i ? txt(1779, `${b.why}.`) : {},
     { '232:1753': { wrap: rev('y', 0.1, 1.1) } },
@@ -310,11 +344,13 @@ export function DisputeOne() {
   const i = P(nav, 'i', 0)
   const d = DISPUTES[i]
   const settle = () => { fx.stamp(); peek({ mood: 'thumbs', say: 'Settled.', sub: `${d.room} · ${d.item}`, ms: 2000 }); store.set(s => ({ disputesLeft: s.disputesLeft.filter(x => x !== i) })); nav.reset('disputes', { tr: 'none' }) }
-  return <Fig s={S.disputeOne} binds={B(
+  return <Fig s={S.disputeOne} need={[PH(d.photo)]} extra={<BackBtn to="disputes" label="Back to disputes" />} binds={B(
     txt(2004, `${d.room} · ${d.item}`), hide(2005), txt(2024, `${d.tech} says`),
     txt(2012, d.student), txt(2030, d.techSays),
     { '232:2007': { wrap: slap(0.2) }, '232:2025': { wrap: slap(0.4) } },
-    i === 0 ? { '232:2013': { wrap: place(0.55) }, '232:2031': { wrap: place(0.7) } } : hide(2013, 2023, 2031, 2040, 2049),
+    { '232:2013': { render: () => <Shot src={PH(d.photo)} w={330} h={260} r={14} rot={-1.5} imgStyle={{ filter: 'saturate(.7) brightness(.9)' }} />, wrap: place(0.55) }, '232:2031': { render: () => <Shot src={PH(d.photo)} w={330} h={260} r={14} rot={1.5} imgStyle={{ objectPosition: '75% 40%', filter: 'brightness(1.08)' }} />, wrap: place(0.7) } },
+    { '232:2023': { style: CAP }, '232:2040': { style: CAP } },
+    i === 0 ? {} : hide(2049),
     btn(2043, settle, 'Reopen the job'), btn(2045, settle, 'Uphold the closure'),
     btn(2047, () => setModal({ kind: 'reassign', i, from: 'dispute' }), 'Reassign'),
   )} />
@@ -349,7 +385,7 @@ export function FixtureOne() {
   const i = P(nav, 'i', 0)
   const f = FIXTURES[i]
   const sugg = store.use(x => x.replaceSuggested.includes(i))
-  return <Fig s={S.fixtureOne} binds={B(
+  return <Fig s={S.fixtureOne} extra={<BackBtn to="fixtures" label="Back to fixtures" />} binds={B(
     txt(2304, `${f.room} · ${f.item}`), txt(2305, f.sub),
     { '232:2306': { wrap: rev('y', 0.1, 1.0) }, '232:2308': { wrap: pop(0.25) }, '232:2313': { wrap: pop(0.45) }, '232:2318': { wrap: pop(0.65) }, '232:2323': { wrap: slap(0.5) } },
     i ? txt(2331, `Suggest replacing the ${f.item.toLowerCase()}`) : {},
@@ -384,7 +420,7 @@ export function Tech() {
   const t = TEAM[i]
   const blocks = bs ? BLOCKSETS[1][i] : t.blocks
   const bump = (k: 'shift' | 'blockSet', n: number) => { fx.select(); store.set(s => ({ [k]: s[k].map((v, j) => (j === i ? (v + 1) % n : v)) })) }
-  return <Fig s={S.tech} binds={B(
+  return <Fig s={S.tech} extra={<BackBtn to="team" label="Back to the team" />} binds={B(
     txt(2452, t.name), txt(2453, `Shift ${SHIFTS[shift]} · Blocks ${blocks} · Hindi and English`),
     hide(2493),
     { '232:2456': { wrap: pop(0.2, fx.check) }, '232:2463': { wrap: pop(0.35, fx.check) }, '232:2470': { wrap: pop(0.5) }, '232:2476': { wrap: pop(0.65) } },
@@ -427,7 +463,7 @@ export function Rules() {
       shift += w - rect.w
     }
   })
-  return <Fig s={S.rules} binds={B(...binds,
+  return <Fig s={S.rules} extra={<BackBtn to="team" label="Back to the team" />} binds={B(...binds,
     btn(2554, () => busy(() => { fx.success(); store.set({ rulesSaved: true }); peek({ mood: 'thumbs', say: 'Rules saved.', ms: 1800 }) }), 'Save rules'),
     saved ? txt(2555, 'Saved ✓') : {},
   )} />
@@ -436,7 +472,7 @@ export function Rules() {
 /* ================= Errors ================= */
 export function E404() {
   const { nav } = useApp()
-  return <Fig s={S.e404} binds={B(hideIds('236:622', '236:628'), btn('236:630', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'), btn('236:632', () => nav.reset('check', { tr: 'none' }), 'Go to To check'))} extra={<Hanging cx={764} top={20} scale={1.3} title="We can't find that page." sub="It may be old, closed or merged." />} />
+  return <Fig s={S.e404} binds={B(hideIds('236:622', '236:628'), btn('236:630', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'), btn('236:632', () => nav.reset('check', { tr: 'none' }), 'Go to the check list'))} extra={<Hanging cx={764} top={20} scale={1.3} title="We can't find that page." sub="It may be old, closed or merged." />} />
 }
 export function Offline() {
   const { nav } = useApp()

@@ -17,8 +17,9 @@ import { useAssets, prefetchBundles, fileUrl } from '../fig/preload'
 import { preloadMascot } from '../fig/mascot'
 
 // once the first screen is up, quietly fetch every other screen's packed drawings (one request each), so later screens appear whole at once
-const BACKGROUND = ['build-1', 'build-2', 'build-3', 'build-log', 'tool-driver', 'tool-flame']
-function warmEverything() { prefetchBundles(Object.values(S).map(f => f.i), BACKGROUND.map(fileUrl)); setTimeout(() => preloadMascot(), 1500) }
+const BACKGROUND = ['build-1', 'build-2', 'build-3', 'build-log']
+const PHOTOS = ['fan', 'fan-before', 'chair', 'tap', 'motor', 'router', 'latch', 'switch', 'drain', 'tube', 'geyser', 'hinge', 'door'].map(n => `${import.meta.env.BASE_URL}photos/${n}.jpg`)
+function warmEverything() { prefetchBundles(Object.values(S).map(f => f.i), [...BACKGROUND.map(fileUrl), ...PHOTOS]); setTimeout(() => preloadMascot(), 1500) }
 
 const RAW = (FIG as unknown as { screens: Record<string, FNode> }).screens
 const from = (s: FNode, firstId: string, skip: string[] = []): FNode => {
@@ -116,7 +117,7 @@ function useFit(needW: number, vp: VP) {
   // with the keyboard up the desk keeps its width fit (and scrolls) instead of being squashed into the strip the keyboard leaves
   const fit = vp.kb ? vp.w / needW : Math.min(vp.w / needW, vp.h / 900)
   // a tablet shows the whole desk (never cut off at the side); only a phone-width window keeps a readable size and scrolls sideways
-  const k = Math.max(fit, vp.w < 700 ? Math.min(0.62, vp.h / 900) : 0.3)
+  const k = Math.max(fit, 0.2) // always the whole width: the desk never scrolls sideways
   // rounded down, so the page is never a hair bigger than the window (that made scrollbars appear for no reason)
   return { k, W: Math.max(needW, Math.floor(vp.w / k)), H: Math.max(900, Math.floor(vp.h / k)) }
 }
@@ -157,7 +158,7 @@ export default function App() {
   ]
   return (
     <Ctx.Provider value={{ nav, setModal: (m: Modal) => { if (m) fx.pop(); setModal(m) }, busy: (fn: () => void) => { if (!job) setJob({ fn }) } }}>
-      <div style={{ position: 'fixed', left: 0, right: 0, top: vp.top, height: vp.h, background: '#FFFBF3', overflow: 'auto', overscrollBehavior: 'contain' }}>
+      <div style={{ position: 'fixed', left: 0, right: 0, top: vp.top, height: vp.h, background: '#FFFBF3', overflowX: 'hidden', overflowY: 'auto', overscrollBehaviorX: 'none', touchAction: 'pan-y' }}>
         <div style={{ width: W * k, height: H * k }}>
           <div style={{ width: W, height: H, transform: `scale(${k})`, transformOrigin: '0 0', transition: 'transform .3s cubic-bezier(.22,1,.36,1)', position: 'relative', overflow: 'hidden', background: '#FFFBF3' }}>
             <div style={{ position: 'absolute', left: frameLeft, top: 0, width: 1440, height: 900, overflow: 'hidden', transition: 'left .3s cubic-bezier(.22,1,.36,1)' }}>
