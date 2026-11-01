@@ -115,8 +115,10 @@ const GROUPS: [string, [Screen, string][]][] = [
 function useFit(needW: number, vp: VP) {
   // with the keyboard up the desk keeps its width fit (and scrolls) instead of being squashed into the strip the keyboard leaves
   const fit = vp.kb ? vp.w / needW : Math.min(vp.w / needW, vp.h / 900)
-  const k = Math.max(fit, Math.min(0.62, vp.h / 900))
-  return { k, W: Math.max(needW, Math.ceil(vp.w / k)), H: Math.max(900, Math.ceil(vp.h / k)) }
+  // a tablet shows the whole desk (never cut off at the side); only a phone-width window keeps a readable size and scrolls sideways
+  const k = Math.max(fit, vp.w < 700 ? Math.min(0.62, vp.h / 900) : 0.3)
+  // rounded down, so the page is never a hair bigger than the window (that made scrollbars appear for no reason)
+  return { k, W: Math.max(needW, Math.floor(vp.w / k)), H: Math.max(900, Math.floor(vp.h / k)) }
 }
 const scrimCss = (c?: string) => { if (!c || !c.startsWith('#')) return 'rgba(0,34,78,.5)'; const [h, al] = c.split('@'); const n = parseInt(h.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${al ?? 1})` }
 export default function App() {
