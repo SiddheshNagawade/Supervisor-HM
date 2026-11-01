@@ -8,7 +8,7 @@ import { Reveal, Slap, PlaceDown, Settle } from '../fig/anim'
 import { NavApi } from '../ds/nav'
 import { fx } from '../ds/fx'
 import { Hanging, peek } from '../fig/mascot'
-import { ScoreDial, InkStamp, EdgePeeker } from '../fig/extras'
+import { ScoreDial, InkStamp } from '../fig/extras'
 import FIG from './fig.json'
 import { store, EMAIL_OK, NEW_ROW, CLOSURES, BLOCKED, DISPUTES, FIXTURES, TEAM, Row } from './store'
 
@@ -244,11 +244,11 @@ export function Blocked() {
     { '232:1680': { dy: hov * 120, style: { transition: 'top .18s cubic-bezier(.22,1,.36,1)' } } },
     { '232:1685': { style: { left: 216 } } },
     ...BL.map((r, j) => ({ [id(r[0])]: { wrap: pop(0.15 + j * 0.1) } })),
-  )} extra={<>{BLOCKED.map((b, j) => (
+  )} extra={BLOCKED.map((b, j) => (
     <button key={j} type="button" aria-label={`Room ${b.room} · ${b.title}`} onMouseEnter={() => setHov(j)} onFocus={() => setHov(j)}
       onClick={() => { fx.tap(); nav.go('blockedOne', { tr: 'none', p: { i: j } }) }}
       style={{ position: 'absolute', left: 140, top: 194 + 120 * j, width: 1210, height: 92, background: 'transparent', border: 0, cursor: 'pointer', borderRadius: 16 }} />
-  ))}<EdgePeeker side="bottom" at={1180} tone="blue" delay={1.4} glance={-1} /></>} />
+  ))} />
 }
 export function BlockedOne() {
   const { nav, setModal } = useApp()
@@ -297,7 +297,7 @@ export function Disputes() {
       { [id(sl[2])]: { wrap: place(0.1 + j * 0.12) }, [id(sl[5])]: { wrap: place(0.18 + j * 0.12) } },
       btn(sl[8], () => nav.go('disputeOne', { tr: 'none', p: { i: k } }), 'Open ' + d.room))
   })
-  return <Fig s={S.disputes} binds={B(...binds)} extra={<EdgePeeker side="bottom" at={1000} tone="cream" delay={1.4} glance={-1} />} />
+  return <Fig s={S.disputes} binds={B(...binds)} />
 }
 export function DisputeOne() {
   const { nav, setModal } = useApp()
@@ -336,7 +336,7 @@ export function Fixtures() {
   return <Fig s={S.fixtures} binds={B(...FX.map((f, j) => B(
     ...f[3].map((r, k) => ({ [id(r)]: { wrap: pop(0.2 + j * 0.1 + k * 0.08) } })),
     btn(f[4], () => nav.go('fixtureOne', { tr: 'none', p: { i: j } }), 'Open ' + FIXTURES[j].room),
-  )))} extra={<EdgePeeker side="bottom" at={1120} tone="yellow" delay={1.4} glance={-1} />} />
+  )))} />
 }
 export function FixtureOne() {
   const { nav } = useApp()
@@ -367,7 +367,7 @@ export function Team() {
     ...labels.map(n => ({ [n.i]: { style: { animation: `figfade .3s ease ${delayOf(n.y) + (n.x - 500) / 2400 + 0.25}s both` } } })),
     { '232:2416': { wrap: rev('y', 0.9, 0.8) } },
     btn(2419, () => nav.go('rules', { tr: 'none' }), 'Notification rules'),
-  )} extra={<EdgePeeker side="bottom" at={1230} tone="blue" delay={1.6} glance={-1} />} />
+  )} />
 }
 const SHIFTS = ['10 AM to 6 PM', '10 AM to 2 PM', '2 to 6 PM']
 const BLOCKSETS = [['BG, F, C', 'A, B', 'C, D', 'D, E'], ['A, B, C', 'D, E', 'BG, F', 'C']]
