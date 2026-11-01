@@ -6,45 +6,48 @@ export const EMAIL_OK = /^[a-z0-9][a-z0-9._-]*@([a-z0-9-]+\.)?iitr\.ac\.in$/i
 
 /* "To check" list: the six rows in the Figma, in its order (oldest first is the Figma's promise,
    the rows are drawn as the designer laid them out). */
-export type Row = { id: string; room: string; block: string; title: string; item: string; sub: string; age: string; late: boolean; dot: 'navy' | 'ring' | 'brick'
+/** Where a problem is. A student's own room is the only "Room"; everything shared is named for what it is. */
+export type Place = 'Room' | 'Corridor' | 'Washroom' | 'Pump room'
+export const whereOf = (room: string, place: Place) => (place === 'Room' ? `Room ${room}` : place === 'Pump room' ? 'Pump room' : `${place} ${room}`)
+export type Row = { id: string; place: Place; room: string; block: string; title: string; item: string; sub: string; age: string; late: boolean; dot: 'navy' | 'ring' | 'brick'
   quote: string; photo: Photo | null; dup: boolean }
 /** Real photographs (public/photos/<name>.jpg, credits in CREDITS.txt there). */
 export type Photo = 'fan' | 'chair' | 'tap' | 'motor' | 'router' | 'latch' | 'switch' | 'drain' | 'tube' | 'geyser' | 'hinge' | 'door'
 export const ROWS: Row[] = [
-  { id: 'r1', room: 'BG04', block: 'C', title: 'Fan not working', item: 'ceiling fan', sub: 'Block C · note + photo', age: '2h ago', late: false, dot: 'navy', quote: '“Fan stops after a few minutes. Free after 2 PM.”', photo: 'fan', dup: true },
-  { id: 'r2', room: 'F2', block: 'A', title: 'Router light is red', item: 'router', sub: 'Block A · note + photo', age: '5h ago', late: false, dot: 'navy', quote: '“The light has been red since the morning.”', photo: 'router', dup: false },
-  { id: 'r3', room: '118', block: 'D', title: 'Tap leaking under the sink', item: 'tap', sub: 'Block D · photo', age: '1d ago', late: false, dot: 'navy', quote: '“Water collects under the sink by night.”', photo: 'tap', dup: false },
-  { id: 'r4', room: 'B305', block: 'B', title: 'Chair broken, leg loose', item: 'chair', sub: 'Block B · photo', age: '4d ago', late: true, dot: 'ring', quote: '“One leg moves when I sit.”', photo: 'chair', dup: false },
-  { id: 'r5', room: 'C209', block: 'C', title: 'Window will not latch', item: 'window', sub: 'Block C · note + photo', age: '4d ago', late: true, dot: 'ring', quote: '“Rain comes in at night.”', photo: 'latch', dup: false },
-  { id: 'r6', room: '340', block: 'A', title: 'Motor unit noisy', item: 'motor unit', sub: 'Block A · note + photo', age: '6d ago', late: true, dot: 'brick', quote: '“Loud hum from the pump room.”', photo: 'motor', dup: false },
+  { id: 'r1', place: 'Room', room: 'BG04', block: 'C', title: 'Fan not working', item: 'ceiling fan', sub: 'Block C · room · note + photo', age: '2h ago', late: false, dot: 'navy', quote: '“Fan stops after a few minutes. Free after 2 PM.”', photo: 'fan', dup: true },
+  { id: 'r2', place: 'Corridor', room: 'F2', block: 'A', title: 'Router light is red', item: 'router', sub: 'Block A · corridor · note + photo', age: '5h ago', late: false, dot: 'navy', quote: '“The light has been red since the morning.”', photo: 'router', dup: false },
+  { id: 'r3', place: 'Washroom', room: 'W1', block: 'D', title: 'Tap leaking under the sink', item: 'tap', sub: 'Block D · washroom · photo', age: '1d ago', late: false, dot: 'navy', quote: '“Water collects under the sink by night.”', photo: 'tap', dup: false },
+  { id: 'r4', place: 'Room', room: 'B305', block: 'B', title: 'Chair broken, leg loose', item: 'chair', sub: 'Block B · room · photo', age: '4d ago', late: true, dot: 'ring', quote: '“One leg moves when I sit.”', photo: 'chair', dup: false },
+  { id: 'r5', place: 'Room', room: 'C209', block: 'C', title: 'Window will not latch', item: 'window', sub: 'Block C · room · note + photo', age: '4d ago', late: true, dot: 'ring', quote: '“Rain comes in at night.”', photo: 'latch', dup: false },
+  { id: 'r6', place: 'Pump room', room: 'PUMP', block: 'A', title: 'Pump motor noisy', item: 'pump motor', sub: 'Block A · pump room · note + photo', age: '6d ago', late: true, dot: 'brick', quote: '“Loud hum from the pump room.”', photo: 'motor', dup: false },
 ]
-export const NEW_ROW: Row = { id: 'r7', room: 'C117', block: 'C', title: 'Geyser not heating', item: 'geyser', sub: 'Block C · note + photo', age: 'just now', late: false, dot: 'navy', quote: '“No hot water since this morning.”', photo: 'geyser', dup: false }
+export const NEW_ROW: Row = { id: 'r7', place: 'Washroom', room: 'W3', block: 'C', title: 'Geyser not heating', item: 'geyser', sub: 'Block C · washroom · note + photo', age: 'just now', late: false, dot: 'navy', quote: '“No hot water since this morning.”', photo: 'geyser', dup: false }
 
 export const CLOSURES = [
-  { room: 'BG11', block: 'B', when: 'yesterday 4:52 PM', tech: 'Ravi', did: 'Capacitor replaced. Ran the fan for five minutes.', photo: 'fan' as Photo },
-  { room: 'C203', block: 'C', when: 'yesterday 3:40 PM', tech: 'Imran', did: 'Changed the washer and the spindle.', photo: 'tap' as Photo },
-  { room: 'A205', block: 'A', when: 'yesterday 1:15 PM', tech: 'Deepak', did: 'Replaced both hinges of the almirah.', photo: 'hinge' as Photo },
-  { room: 'F1', block: 'A', when: 'yesterday 11:30 AM', tech: 'Sunil', did: 'New choke fitted in the corridor light.', photo: 'tube' as Photo },
-  { room: 'B111', block: 'B', when: '2 days ago', tech: 'Ravi', did: 'Fixed the loose switchboard.', photo: 'switch' as Photo },
-  { room: 'D102', block: 'D', when: '2 days ago', tech: 'Sunil', did: 'Cleaned the clogged drain.', photo: 'drain' as Photo },
+  { place: 'Room' as Place, room: 'BG11', block: 'B', when: 'yesterday 4:52 PM', tech: 'Ravi', did: 'Capacitor replaced. Ran the fan for five minutes.', photo: 'fan' as Photo },
+  { place: 'Washroom' as Place, room: 'C-WC', block: 'C', when: 'yesterday 3:40 PM', tech: 'Imran', did: 'Changed the washer and the spindle.', photo: 'tap' as Photo },
+  { place: 'Room' as Place, room: 'A205', block: 'A', when: 'yesterday 1:15 PM', tech: 'Deepak', did: 'Replaced both hinges of the almirah.', photo: 'hinge' as Photo },
+  { place: 'Corridor' as Place, room: 'F1', block: 'A', when: 'yesterday 11:30 AM', tech: 'Sunil', did: 'New choke fitted in the corridor light.', photo: 'tube' as Photo },
+  { place: 'Room' as Place, room: 'B111', block: 'B', when: '2 days ago', tech: 'Ravi', did: 'Fixed the loose switchboard.', photo: 'switch' as Photo },
+  { place: 'Washroom' as Place, room: 'D-WC', block: 'D', when: '2 days ago', tech: 'Sunil', did: 'Cleaned the clogged drain.', photo: 'drain' as Photo },
 ]
 export const BLOCKED = [
-  { room: '340', title: 'Motor unit', why: 'Waiting for purchase approval', days: '6d', sub: 'Blocked 6 days · Block A · water pump motor', photo: 'motor' as Photo },
-  { room: 'B208', title: 'Geyser leaks', why: 'Vendor visit booked Tuesday', days: '4d', sub: 'Blocked 4 days · Block B · geyser', photo: 'geyser' as Photo },
-  { room: 'F11', title: 'Door lock stuck', why: 'No master key for this floor', days: '3d', sub: 'Blocked 3 days · Block F · door lock', photo: 'door' as Photo },
-  { room: 'C102', title: 'Window glass cracked', why: 'Part not in stock', days: '3d', sub: 'Blocked 3 days · Block C · window', photo: 'latch' as Photo },
+  { place: 'Pump room' as Place, room: 'PUMP', title: 'Motor burnt out', why: 'Waiting for purchase approval', days: '6d', sub: 'Blocked 6 days · Block A · water pump room', photo: 'motor' as Photo },
+  { place: 'Washroom' as Place, room: 'B-WC', title: 'Geyser leaks', why: 'Vendor visit booked Tuesday', days: '4d', sub: 'Blocked 4 days · Block B · washroom geyser', photo: 'geyser' as Photo },
+  { place: 'Room' as Place, room: 'F11', title: 'Door lock stuck', why: 'No master key for this floor', days: '3d', sub: 'Blocked 3 days · Block F · door lock', photo: 'door' as Photo },
+  { place: 'Room' as Place, room: 'C102', title: 'Window glass cracked', why: 'Part not in stock', days: '3d', sub: 'Blocked 3 days · Block C · window', photo: 'latch' as Photo },
 ]
 export const DISPUTES = [
-  { room: 'B305', item: 'Chair', tech: 'Ravi', student: '“Still wobbly. The leg moves.”', techSays: '“Tightened the screw, tested it.”', open: '1d open', photo: 'chair' as Photo },
-  { room: 'F2', item: 'Router', tech: 'Imran', student: '“Light is still red.”', techSays: '“Light was green when I left.”', open: '2d open', photo: 'router' as Photo },
-  { room: 'A301', item: 'Tap', tech: 'Deepak', student: '“It drips again.”', techSays: '“Changed the washer, no drip.”', open: '3d open', photo: 'tap' as Photo },
+  { place: 'Room' as Place, room: 'B305', item: 'Chair', tech: 'Ravi', student: '“Still wobbly. The leg moves.”', techSays: '“Tightened the screw, tested it.”', open: '1d open', photo: 'chair' as Photo },
+  { place: 'Corridor' as Place, room: 'F2', item: 'Router', tech: 'Imran', student: '“Light is still red.”', techSays: '“Light was green when I left.”', open: '2d open', photo: 'router' as Photo },
+  { place: 'Washroom' as Place, room: 'A-WC', item: 'Tap', tech: 'Deepak', student: '“It drips again.”', techSays: '“Changed the washer, no drip.”', open: '3d open', photo: 'tap' as Photo },
 ]
 export const FIXTURES = [
-  { room: 'BG04', item: 'Ceiling fan', sub: 'Block C · 3 repairs in 5 months' },
-  { room: 'B208', item: 'Geyser', sub: 'Block B · 3 repairs in 4 months' },
-  { room: 'F2', item: 'Router', sub: 'Block A · 2 repairs in 3 weeks' },
-  { room: 'C102', item: 'Window latch', sub: 'Block C · 2 repairs in 2 months' },
-  { room: 'A301', item: 'Tap', sub: 'Block A · 2 repairs in 6 weeks' },
+  { place: 'Room' as Place, room: 'BG04', item: 'Ceiling fan', sub: 'Block C · room · 3 repairs in 5 months' },
+  { place: 'Washroom' as Place, room: 'B-WC', item: 'Geyser', sub: 'Block B · washroom · 3 repairs in 4 months' },
+  { place: 'Corridor' as Place, room: 'F2', item: 'Router', sub: 'Block A · corridor · 2 repairs in 3 weeks' },
+  { place: 'Room' as Place, room: 'C102', item: 'Window latch', sub: 'Block C · room · 2 repairs in 2 months' },
+  { place: 'Washroom' as Place, room: 'A-WC', item: 'Tap', sub: 'Block A · washroom · 2 repairs in 6 weeks' },
 ]
 export const TEAM = [
   { name: 'Ravi', blocks: 'BG, F, C' }, { name: 'Imran', blocks: 'A, B' }, { name: 'Deepak', blocks: 'C, D' }, { name: 'Sunil', blocks: 'D, E' },

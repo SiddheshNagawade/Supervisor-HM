@@ -11,7 +11,7 @@ import { Shot } from '../ds/camera'
 import { Hanging, peek } from '../fig/mascot'
 import { ScoreDial, InkStamp } from '../fig/extras'
 import FIG from './fig.json'
-import { store, EMAIL_OK, NEW_ROW, CLOSURES, BLOCKED, DISPUTES, FIXTURES, TEAM, Row } from './store'
+import { store, EMAIL_OK, NEW_ROW, CLOSURES, whereOf, BLOCKED, DISPUTES, FIXTURES, TEAM, Row } from './store'
 
 const hideIds = (...ids: string[]): Binds => Object.fromEntries(ids.map(i => [i, { hide: true }]))
 export const S = (FIG as unknown as { screens: Record<string, FNode> }).screens
@@ -44,8 +44,8 @@ function BackBtn({ to, label }: { to: Screen; label: string }) {
   const { nav } = useApp()
   return (
     <button type="button" aria-label={label} title={label} onClick={() => { fx.tap(); nav.reset(to, { tr: 'none' }) }} className="fig-press"
-      style={{ position: 'absolute', left: 84, top: 41, width: 44, height: 44, padding: 0, border: 0, background: 'none', cursor: 'pointer' }}>
-      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" style={{ display: 'block' }}>
+      style={{ position: 'absolute', left: 93, top: 43, width: 40, height: 40, padding: 0, border: 0, background: 'none', cursor: 'pointer' }}>
+      <svg width="40" height="40" viewBox="0 0 44 44" fill="none" style={{ display: 'block' }}>
         <circle cx="22" cy="22" r="20.75" fill="#FFFBF3" stroke="#00224E" strokeWidth="2.5" />
         <path d="M25 13L16 22L25 31" stroke="#00224E" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -156,7 +156,7 @@ const CHECK_SLOTS = [
 ]
 const DOT = { navy: '232:916', ring: '232:949', brick: '232:969' }
 export function Check() {
-  const { nav } = useApp()
+  const { nav } = useApp() // (the section screens below all get a back button to the desk)
   const rows = store.use(x => x.rows)
   const at = store.use(x => x.closureAt)
   const binds: Binds[] = [
@@ -173,7 +173,7 @@ export function Check() {
     )
     if (j === rows.length - 1 && sl[7]) binds.push(hide(sl[7]))
   })
-  return <Fig s={S.check} binds={B(...binds)} />
+  return <Fig s={S.check} extra={<BackBtn to="desk" label="Back to the desk" />} binds={B(...binds)} />
 }
 
 /* ================= Review report (+ Merge dialog) ================= */
@@ -184,11 +184,11 @@ export function Review() {
   const rows = store.use(x => x.rows)
   const r: Row = rows.find(x => x.id === P(nav, 'id', 'r1')) || rows[0] || NEW_ROW
   const [who, setWho] = useState(0)
-  const finish = () => busy(() => { fx.stamp(); peek({ mood: 'cheer', say: `${CHIPS[who][1]} has it.`, sub: `${r.room} · ${r.title}` }); done(r.id); nav.reset('check', { tr: 'none' }) })
+  const finish = () => busy(() => { fx.stamp(); peek({ mood: 'cheer', say: `${CHIPS[who][1]} has it.`, sub: `${whereOf(r.room, r.place)} · ${r.title}` }); done(r.id); nav.reset('check', { tr: 'none' }) })
   return <Fig s={S.review} need={r.photo ? [PH(r.photo)] : []} extra={<BackBtn to="check" label="Back to the check list" />} binds={B(
-    txt(1011, `${r.room} · Block ${r.block} · sent ${r.age.replace(/^1d ago$/, 'yesterday').replace(/(\d+)h ago/, '$1 hours ago').replace(/(\d+)d ago/, '$1 days ago')}`),
+    txt(1011, `${whereOf(r.room, r.place)} · Block ${r.block} · sent ${r.age.replace(/^1d ago$/, 'yesterday').replace(/(\d+)h ago/, '$1 hours ago').replace(/(\d+)d ago/, '$1 days ago')}`),
     r.photo ? { '232:1012': { render: () => <Shot src={PH(r.photo!)} w={330} h={310} r={14} />, wrap: place(0.1) } } : hide(1012, 1025),
-    txt(1025, `${r.item}, ${r.room}`, CAP),
+    txt(1025, `${r.item}, ${whereOf(r.room, r.place)}`, CAP),
     r.photo ? { '232:1026': { wrap: slap(0.4) } } : { '232:1026': { wrap: slap(0.25), dy: -344 }, '232:1031': { dy: -344 } },
     txt(1031, r.quote), hide(1042), // "same fixture, same room" was a designer's note
     r.dup ? { '232:1034': { wrap: place(0.55) } } : hide(1032, 1033, 1034, 1038, 1039, 1040, 1041),
@@ -224,7 +224,7 @@ export function Closure() {
     }, 900)
   }
   return <Fig key={at} s={S.closure} need={[PH(c.photo), PH('fan-before')]} extra={<>{stamped && <div style={{ position: 'absolute', left: 770, top: 400, zIndex: 5 }}><InkStamp size={138} /></div>}<BackBtn to="check" label="Back to the check list" /></>} binds={B(
-    txt(1239, `${c.room} · Block ${c.block} · closed ${c.when} by ${c.tech}`), txt(1269, `What ${c.tech} did`), txt(1271, c.did), hide(1316, 1268),
+    txt(1239, `${whereOf(c.room, c.place)} · Block ${c.block} · closed ${c.when} by ${c.tech}`), txt(1269, `What ${c.tech} did`), txt(1271, c.did), hide(1316, 1268),
     { '232:1240': { render: () => <Shot src={PH(c.photo === 'fan' ? 'fan-before' : c.photo)} w={360} h={320} r={14} rot={-1.5} imgStyle={{ filter: 'saturate(.5) brightness(.82)' }} />, wrap: place(0.1) }, '232:1254': { render: () => <Shot src={PH(c.photo)} w={360} h={320} r={14} rot={1.5} />, wrap: place(0.35) } },
     { '232:1253': { style: CAP }, '232:1267': { style: CAP } },
     { '232:1272': { wrap: pop(0.7, fx.check) }, '232:1277': { wrap: pop(0.85, fx.check) }, '232:1282': { wrap: pop(1.0, fx.check) } },
@@ -247,7 +247,7 @@ export function Forecast() {
   const MOVERS = ['232:1510', '232:1506']
   const hidden = hide(1518, 1514, 1460, 1456, 1452, 1448, 1464) // Tuesday's top 2 and Monday's top 4 are not drawn; Monday's "over" label goes too
   const mover = (n: FNode, k: number) => ({ [n.i]: { art: moved ? '232:1502' : undefined, wrap: (el: ReactNode) => <Drop delay={0.15 + cols.indexOf(n.x) * 0.1 + (568 - n.y) / 24 * 0.035}><motion.div animate={moved ? { x: -158, y: [0, -46, 48] } : { x: 0, y: 0 }} transition={r ? { duration: 0 } : moved ? { x: { type: 'spring', stiffness: 120, damping: 15, delay: k * 0.08 }, y: { duration: 0.75, times: [0, 0.42, 1], ease: 'easeOut', delay: k * 0.08 } } : { duration: 0 }}>{el}</motion.div></Drop> } })
-  return <Fig s={s} binds={B(
+  return <Fig s={s} extra={<BackBtn to="desk" label="Back to the desk" />} binds={B(
     wrapAll(dots, n => drop(0.15 + cols.indexOf(n.x) * 0.1 + (568 - n.y) / 24 * 0.035)),
     ...MOVERS.map((id, k) => mover(dots.find(d => d.i === id)!, k)),
     hidden,
@@ -284,8 +284,8 @@ export function Blocked() {
     { '232:1680': { dy: hov * 120, style: { transition: 'top .18s cubic-bezier(.22,1,.36,1)' } } },
     { '232:1685': { style: { left: 216 } } },
     ...BL.map((r, j) => ({ [id(r[0])]: { wrap: pop(0.15 + j * 0.1) } })),
-  )} need={BLOCKED.map(b => PH(b.photo))} extra={<>{BLOCKED.map((b, j) => (<div key={'p' + j} style={{ position: 'absolute', left: 940, top: 208 + 120 * j, pointerEvents: 'none' }}><Shot src={PH(b.photo)} w={104} h={66} r={10} style={{ boxShadow: '2px 3px 0 #00224E' }} /></div>))}<BlockedGlance />{BLOCKED.map((b, j) => (
-    <button key={j} type="button" aria-label={`Room ${b.room} · ${b.title}`} onMouseEnter={() => setHov(j)} onFocus={() => setHov(j)}
+  )} need={BLOCKED.map(b => PH(b.photo))} extra={<><BackBtn to="desk" label="Back to the desk" />{BLOCKED.map((b, j) => (<div key={'p' + j} style={{ position: 'absolute', left: 940, top: 208 + 120 * j, pointerEvents: 'none' }}><Shot src={PH(b.photo)} w={104} h={66} r={10} style={{ boxShadow: '2px 3px 0 #00224E' }} /></div>))}<BlockedGlance />{BLOCKED.map((b, j) => (
+    <button key={j} type="button" aria-label={`${whereOf(b.room, b.place)} · ${b.title}`} onMouseEnter={() => setHov(j)} onFocus={() => setHov(j)}
       onClick={() => { fx.tap(); nav.go('blockedOne', { tr: 'none', p: { i: j } }) }}
       style={{ position: 'absolute', left: 140, top: 194 + 120 * j, width: 1210, height: 92, background: 'transparent', border: 0, cursor: 'pointer', borderRadius: 16 }} />
   ))}</>} />
@@ -297,7 +297,7 @@ export function BlockedOne() {
   const esc = store.use(x => x.escalated.includes(i))
   const [called, setCalled] = useState(false)
   return <Fig s={S.blockedOne} extra={<BackBtn to="blocked" label="Back to blocked jobs" />} binds={B(
-    txt(1751, `Room ${b.room} · ${b.title}`), txt(1752, b.sub),
+    txt(1751, `${whereOf(b.room, b.place)} · ${b.title}`), txt(1752, b.sub),
     i ? txt(1779, `${b.why}.`) : {},
     { '232:1753': { wrap: rev('y', 0.1, 1.1) } },
     ...['1755', '1760', '1765', '1770', '1775'].map((n, k) => ({ [id(n)]: { wrap: pop(0.2 + k * 0.18) } })),
@@ -311,7 +311,7 @@ export function BlockedOne() {
 }
 export const escalateBinds = (close: () => void, i: number, who: number, setWho: (n: number) => void, note: string, setNote: (s: string) => void, busy: (fn: () => void) => void): Binds => B(
   { '234:377': { style: { animation: 'figfade .2s ease both' } } },
-  txt('234:381', `Escalate Room ${BLOCKED[i].room}?`),
+  txt('234:381', `Escalate ${whereOf(BLOCKED[i].room, BLOCKED[i].place)}?`),
   { '234:383': { onClick: () => { fx.select(); setWho(0) }, label: 'Warden', style: { background: who === 0 ? '#FFD265' : '#FFFBF3' } } },
   { '234:385': { onClick: () => { fx.select(); setWho(1) }, label: 'Estate office', style: { background: who === 1 ? '#FFD265' : '#FFFBF3' } } },
   field('234:387', note, setNote, { width: 516, placeholder: 'Add a line for them' }),
@@ -337,15 +337,15 @@ export function Disputes() {
       { [id(sl[2])]: { wrap: place(0.1 + j * 0.12) }, [id(sl[5])]: { wrap: place(0.18 + j * 0.12) } },
       btn(sl[8], () => nav.go('disputeOne', { tr: 'none', p: { i: k } }), 'Open ' + d.room))
   })
-  return <Fig s={S.disputes} binds={B(...binds)} />
+  return <Fig s={S.disputes} extra={<BackBtn to="desk" label="Back to the desk" />} binds={B(...binds)} />
 }
 export function DisputeOne() {
   const { nav, setModal } = useApp()
   const i = P(nav, 'i', 0)
   const d = DISPUTES[i]
-  const settle = () => { fx.stamp(); peek({ mood: 'thumbs', say: 'Settled.', sub: `${d.room} · ${d.item}`, ms: 2000 }); store.set(s => ({ disputesLeft: s.disputesLeft.filter(x => x !== i) })); nav.reset('disputes', { tr: 'none' }) }
+  const settle = () => { fx.stamp(); peek({ mood: 'thumbs', say: 'Settled.', sub: `${whereOf(d.room, d.place)} · ${d.item}`, ms: 2000 }); store.set(s => ({ disputesLeft: s.disputesLeft.filter(x => x !== i) })); nav.reset('disputes', { tr: 'none' }) }
   return <Fig s={S.disputeOne} need={[PH(d.photo)]} extra={<BackBtn to="disputes" label="Back to disputes" />} binds={B(
-    txt(2004, `${d.room} · ${d.item}`), hide(2005), txt(2024, `${d.tech} says`),
+    txt(2004, `${whereOf(d.room, d.place)} · ${d.item}`), hide(2005), txt(2024, `${d.tech} says`),
     txt(2012, d.student), txt(2030, d.techSays),
     { '232:2007': { wrap: slap(0.2) }, '232:2025': { wrap: slap(0.4) } },
     { '232:2013': { render: () => <Shot src={PH(d.photo)} w={330} h={260} r={14} rot={-1.5} imgStyle={{ filter: 'saturate(.7) brightness(.9)' }} />, wrap: place(0.55) }, '232:2031': { render: () => <Shot src={PH(d.photo)} w={330} h={260} r={14} rot={1.5} imgStyle={{ objectPosition: '75% 40%', filter: 'brightness(1.08)' }} />, wrap: place(0.7) } },
@@ -358,7 +358,7 @@ export function DisputeOne() {
 const PICK = ['2 jobs today. Free from 4:30 PM.', 'Most jobs today. Free only at 5:30 PM.', 'Fewest jobs today. Free from 3:30 PM.']
 export const reassignBinds = (close: () => void, m: NonNullable<Modal>, who: number, setWho: (n: number) => void, nav: NavApi<Screen>, busy: (fn: () => void) => void): Binds => B(
   { '234:469': { style: { animation: 'figfade .2s ease both' } } }, hide('234:424'),
-  txt('234:473', `Reassign ${m.from === 'blocked' ? 'Room ' + BLOCKED[m.i || 0].room : DISPUTES[m.i || 0].room}?`),
+  txt('234:473', `Reassign ${m.from === 'blocked' ? whereOf(BLOCKED[m.i || 0].room, BLOCKED[m.i || 0].place) : whereOf(DISPUTES[m.i || 0].room, DISPUTES[m.i || 0].place)}?`),
   ...[['234:475', 'Ravi'], ['234:486', 'Imran'], ['234:501', 'Deepak']].map(([c, name], k) => ({ [c]: { onClick: () => { fx.select(); setWho(k) }, label: name, style: { background: who === k ? '#FFD265' : '#FFFBF3' } } })),
   txt('234:508', PICK[who]),
   btn('234:509', () => busy(() => {
@@ -375,7 +375,7 @@ const FX = [
 ] as const
 export function Fixtures() {
   const { nav } = useApp()
-  return <Fig s={S.fixtures} binds={B(...FX.map((f, j) => B(
+  return <Fig s={S.fixtures} extra={<BackBtn to="desk" label="Back to the desk" />} binds={B(...FX.map((f, j) => B(
     ...f[3].map((r, k) => ({ [id(r)]: { wrap: pop(0.2 + j * 0.1 + k * 0.08) } })),
     btn(f[4], () => nav.go('fixtureOne', { tr: 'none', p: { i: j } }), 'Open ' + FIXTURES[j].room),
   )))} />
@@ -386,7 +386,7 @@ export function FixtureOne() {
   const f = FIXTURES[i]
   const sugg = store.use(x => x.replaceSuggested.includes(i))
   return <Fig s={S.fixtureOne} extra={<BackBtn to="fixtures" label="Back to fixtures" />} binds={B(
-    txt(2304, `${f.room} · ${f.item}`), txt(2305, f.sub),
+    txt(2304, `${whereOf(f.room, f.place)} · ${f.item}`), txt(2305, f.sub),
     { '232:2306': { wrap: rev('y', 0.1, 1.0) }, '232:2308': { wrap: pop(0.25) }, '232:2313': { wrap: pop(0.45) }, '232:2318': { wrap: pop(0.65) }, '232:2323': { wrap: slap(0.5) } },
     i ? txt(2331, `Suggest replacing the ${f.item.toLowerCase()}`) : {},
     btn(2330, () => { if (!sugg) { fx.success(); store.set(s => ({ replaceSuggested: [...s.replaceSuggested, i] })) } }, 'Suggest replacing'),
@@ -402,7 +402,7 @@ export function Team() {
   const bookings = (s.k || []).filter(n => n.n === 'booking')
   const labels = (s.k || []).filter(n => n.t === 'TEX' && n.fn?.startsWith('DM Mono') && n.y > 250 && n.y < 700)
   const delayOf = (y: number) => 0.3 + Math.floor((y - 250) / 130) * 0.12
-  return <Fig s={s} binds={B(
+  return <Fig s={s} extra={<BackBtn to="desk" label="Back to the desk" />} binds={B(
     ...['2373', '2386', '2397', '2408'].map((n, k) => ({ [id(n)]: { onClick: () => { fx.tap(); nav.go('tech', { tr: 'none', p: { i: k } }) } } })),
     { '232:2375': { wrap: rev('x', 0.1) }, '232:2388': { wrap: rev('x', 0.2) }, '232:2399': { wrap: rev('x', 0.3) }, '232:2410': { wrap: rev('x', 0.4) } },
     ...bookings.map(n => ({ [n.i]: { style: bar(delayOf(n.y) + (n.x - 500) / 2400) } })),
