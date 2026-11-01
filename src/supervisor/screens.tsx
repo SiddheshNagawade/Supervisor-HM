@@ -222,12 +222,18 @@ export function Forecast() {
   const cols = [...new Set(dots.map(d => d.x))].sort((a, b) => a - b)
   const r = useReducedMotion()
   const settled = moved || left
+  // Capacity is 10 jobs a day. Monday has room (8), Tuesday is 2 over (12): the two over-the-line Tuesday dots hop to Monday,
+  // land inside its capacity and turn navy, and both days fit.
+  const MOVERS = ['232:1510', '232:1506']
+  const hidden = hide(1518, 1514, 1460, 1456, 1452, 1448, 1464) // Tuesday's top 2 and Monday's top 4 are not drawn; Monday's "over" label goes too
+  const mover = (n: FNode, k: number) => ({ [n.i]: { art: moved ? '232:1502' : undefined, wrap: (el: ReactNode) => <Drop delay={0.15 + cols.indexOf(n.x) * 0.1 + (568 - n.y) / 24 * 0.035}><motion.div animate={moved ? { x: -158, y: [0, -46, 48] } : { x: 0, y: 0 }} transition={r ? { duration: 0 } : moved ? { x: { type: 'spring', stiffness: 120, damping: 15, delay: k * 0.08 }, y: { duration: 0.75, times: [0, 0.42, 1], ease: 'easeOut', delay: k * 0.08 } } : { duration: 0 }}>{el}</motion.div></Drop> } })
   return <Fig s={s} binds={B(
-    wrapAll(dots, n => (n.i === '232:1518' || n.i === '232:1514')
-      ? (el: ReactNode) => <Drop delay={0.15 + cols.indexOf(n.x) * 0.1 + (568 - n.y) / 24 * 0.035}><motion.div animate={moved ? { x: -158, y: [0, -52, 0] } : { x: 0, y: 0 }} transition={r ? { duration: 0 } : moved ? { x: { type: 'spring', stiffness: 120, damping: 15 }, y: { duration: 0.75, times: [0, 0.42, 1], ease: 'easeOut' } } : { duration: 0 }}>{el}</motion.div></Drop>
-      : drop(0.15 + cols.indexOf(n.x) * 0.1 + (568 - n.y) / 24 * 0.035)),
+    wrapAll(dots, n => drop(0.15 + cols.indexOf(n.x) * 0.1 + (568 - n.y) / 24 * 0.035)),
+    ...MOVERS.map((id, k) => mover(dots.find(d => d.i === id)!, k)),
+    hidden,
+    txt(1522, '+2 over', { top: 260 }), txt(1642, 'Tuesday has 2 jobs too many. Moving two to Monday keeps every promise.'),
     { '232:1631': { wrap: rev('x', 1.0, 1.0) }, '232:1635': { wrap: rev('x', 1.5, 0.6) }, '232:1637': { wrap: slap(1.2) } },
-    moved ? B(txt(1522, '+2 over', { top: 260 }), txt(1464, '+4 over', { top: 212 }), txt(1634, 'Tuesday is fine now', { color: '#3E4F72' })) : {},
+    moved ? B(hide(1522), txt(1634, 'Tuesday is fine now', { color: '#3E4F72' })) : {},
     moved ? txt(1642, 'Done. Two Tuesday jobs now go on Monday, inside their promise.') : left ? txt(1642, 'Okay. Tuesday stays as it is. ALIGN will warn the team on Monday night.') : {},
     btn(1643, () => { fx.success(); store.set({ moved: true }); setTimeout(() => peek({ mood: 'thumbs', say: 'Tuesday is lighter now.' }), 900) }, 'Move two to Monday'),
     { '232:1645': { onClick: () => { fx.tap(); store.set({ leftAlone: true }) } } },
