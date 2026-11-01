@@ -8,6 +8,7 @@ import { Reveal, Slap, PlaceDown, Settle } from '../fig/anim'
 import { NavApi } from '../ds/nav'
 import { fx } from '../ds/fx'
 import { Hanging, peek } from '../fig/mascot'
+import { ScoreDial, InkStamp, EdgePeeker } from '../fig/extras'
 import FIG from './fig.json'
 import { store, EMAIL_OK, NEW_ROW, CLOSURES, BLOCKED, DISPUTES, FIXTURES, TEAM, Row } from './store'
 
@@ -103,7 +104,17 @@ export function Desk() {
   const s = S.desk
   const chart = arts(s, n => n.n === 'dot' && n.w === 22 && n.y <= 470)
   const cols = [...new Set(chart.map(d => d.x))].sort((a, c) => a - c)
-  return <Fig s={s} binds={B(
+  const open = 33 - Math.min(store.use(x => x.closureAt), 6) // every accepted closure takes one job off the pile
+  const dial = (
+    <div style={{ position: 'absolute', left: 690, top: 4 }}>
+      <ScoreDial value={(open / 40) * 0.8} w={210} dots={15} sound>
+        <span style={{ font: '800 34px/36px "League Spartan", sans-serif', color: '#00224E' }}>{open}</span>
+        <span style={{ font: '500 14px/18px "DM Mono", monospace', color: '#3E4F72', marginLeft: 8 }}>open now</span>
+      </ScoreDial>
+    </div>
+  )
+  return <Fig s={s} extra={dial} binds={B(
+    hide(590),
     txt(589, `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, Meera.`),
     btn(591, () => store.set({ bhawan: (b + 1) % BHAWAN.length }), 'Change block'), txt(592, BHAWAN[b]),
     wrapAll(chart, n => drop(0.15 + cols.indexOf(n.x) * 0.12 + (468 - n.y) / 24 * 0.04)),
@@ -182,9 +193,19 @@ export function Closure() {
   const { nav } = useApp()
   const at = Math.min(store.use(x => x.closureAt), CLOSURES.length - 1)
   const c = CLOSURES[at]
-  const next = () => { fx.stamp(); peek({ mood: 'thumbs', say: at + 1 >= CLOSURES.length ? 'All closures done!' : 'Closed.', sub: at + 1 >= CLOSURES.length ? undefined : `${CLOSURES.length - at - 1} to go`, ms: 1800 }); if (at + 1 >= CLOSURES.length) { store.set({ closureAt: CLOSURES.length }); nav.reset('check', { tr: 'none' }) } else store.set({ closureAt: at + 1 }) }
-  return <Fig key={at} s={S.closure} binds={B(
-    txt(1239, `${c.room} · Block ${c.block} · closed ${c.when} by ${c.tech}`), txt(1269, `What ${c.tech} did`), txt(1271, c.did), txt(1316, `closure ${at + 1} of ${CLOSURES.length}`),
+  const [stamped, setStamped] = useState(false)
+  // the stamp comes down on the "after" photo first, then the next closure is shown
+  const next = () => {
+    if (stamped) return
+    setStamped(true)
+    setTimeout(() => {
+      peek({ mood: 'thumbs', say: at + 1 >= CLOSURES.length ? 'All closures done!' : 'Closed.', sub: at + 1 >= CLOSURES.length ? undefined : `${CLOSURES.length - at - 1} to go`, ms: 1800 })
+      setStamped(false)
+      if (at + 1 >= CLOSURES.length) { store.set({ closureAt: CLOSURES.length }); nav.reset('check', { tr: 'none' }) } else store.set({ closureAt: at + 1 })
+    }, 900)
+  }
+  return <Fig key={at} s={S.closure} extra={stamped ? <div style={{ position: 'absolute', left: 770, top: 400, zIndex: 5 }}><InkStamp size={138} /></div> : undefined} binds={B(
+    txt(1239, `${c.room} · Block ${c.block} · closed ${c.when} by ${c.tech}`), txt(1269, `What ${c.tech} did`), txt(1271, c.did), hide(1316),
     { '232:1240': { wrap: place(0.1) }, '232:1254': { wrap: place(0.35) } },
     { '232:1272': { wrap: pop(0.7, fx.check) }, '232:1277': { wrap: pop(0.85, fx.check) }, '232:1282': { wrap: pop(1.0, fx.check) } },
     ...PROG.map((p, k) => ({ [p]: { art: k === at ? '232:1290' : k === 0 ? '232:1296' : undefined } })),
@@ -203,7 +224,7 @@ export function Forecast() {
   const settled = moved || left
   return <Fig s={s} binds={B(
     wrapAll(dots, n => (n.i === '232:1518' || n.i === '232:1514')
-      ? (el: ReactNode) => <Drop delay={0.15 + cols.indexOf(n.x) * 0.1 + (568 - n.y) / 24 * 0.035}><motion.div animate={{ x: moved ? -158 : 0 }} transition={r ? { duration: 0 } : { type: 'spring', stiffness: 140, damping: 18 }}>{el}</motion.div></Drop>
+      ? (el: ReactNode) => <Drop delay={0.15 + cols.indexOf(n.x) * 0.1 + (568 - n.y) / 24 * 0.035}><motion.div animate={moved ? { x: -158, y: [0, -52, 0] } : { x: 0, y: 0 }} transition={r ? { duration: 0 } : moved ? { x: { type: 'spring', stiffness: 120, damping: 15 }, y: { duration: 0.75, times: [0, 0.42, 1], ease: 'easeOut' } } : { duration: 0 }}>{el}</motion.div></Drop>
       : drop(0.15 + cols.indexOf(n.x) * 0.1 + (568 - n.y) / 24 * 0.035)),
     { '232:1631': { wrap: rev('x', 1.0, 1.0) }, '232:1635': { wrap: rev('x', 1.5, 0.6) }, '232:1637': { wrap: slap(1.2) } },
     moved ? B(txt(1522, '+2 over', { top: 260 }), txt(1464, '+4 over', { top: 212 }), txt(1634, 'Tuesday is fine now', { color: '#3E4F72' })) : {},
@@ -223,11 +244,11 @@ export function Blocked() {
     { '232:1680': { dy: hov * 120, style: { transition: 'top .18s cubic-bezier(.22,1,.36,1)' } } },
     { '232:1685': { style: { left: 216 } } },
     ...BL.map((r, j) => ({ [id(r[0])]: { wrap: pop(0.15 + j * 0.1) } })),
-  )} extra={BLOCKED.map((b, j) => (
+  )} extra={<>{BLOCKED.map((b, j) => (
     <button key={j} type="button" aria-label={`Room ${b.room} · ${b.title}`} onMouseEnter={() => setHov(j)} onFocus={() => setHov(j)}
       onClick={() => { fx.tap(); nav.go('blockedOne', { tr: 'none', p: { i: j } }) }}
       style={{ position: 'absolute', left: 140, top: 194 + 120 * j, width: 1210, height: 92, background: 'transparent', border: 0, cursor: 'pointer', borderRadius: 16 }} />
-  ))} />
+  ))}<EdgePeeker side="bottom" at={1180} tone="blue" delay={1.4} glance={-1} /></>} />
 }
 export function BlockedOne() {
   const { nav, setModal } = useApp()
@@ -276,7 +297,7 @@ export function Disputes() {
       { [id(sl[2])]: { wrap: place(0.1 + j * 0.12) }, [id(sl[5])]: { wrap: place(0.18 + j * 0.12) } },
       btn(sl[8], () => nav.go('disputeOne', { tr: 'none', p: { i: k } }), 'Open ' + d.room))
   })
-  return <Fig s={S.disputes} binds={B(...binds)} />
+  return <Fig s={S.disputes} binds={B(...binds)} extra={<EdgePeeker side="bottom" at={1000} tone="cream" delay={1.4} glance={-1} />} />
 }
 export function DisputeOne() {
   const { nav, setModal } = useApp()
@@ -284,7 +305,7 @@ export function DisputeOne() {
   const d = DISPUTES[i]
   const settle = () => { fx.stamp(); peek({ mood: 'thumbs', say: 'Settled.', sub: `${d.room} · ${d.item}`, ms: 2000 }); store.set(s => ({ disputesLeft: s.disputesLeft.filter(x => x !== i) })); nav.reset('disputes', { tr: 'none' }) }
   return <Fig s={S.disputeOne} binds={B(
-    txt(2004, `${d.room} · ${d.item}`), txt(2005, `The student says it is not fixed. ${d.tech} says it is.`), txt(2024, `${d.tech} says`),
+    txt(2004, `${d.room} · ${d.item}`), hide(2005), txt(2024, `${d.tech} says`),
     txt(2012, d.student), txt(2030, d.techSays),
     { '232:2007': { wrap: slap(0.2) }, '232:2025': { wrap: slap(0.4) } },
     i === 0 ? { '232:2013': { wrap: place(0.55) }, '232:2031': { wrap: place(0.7) } } : hide(2013, 2023, 2031, 2040, 2049),
@@ -294,7 +315,7 @@ export function DisputeOne() {
 }
 const PICK = ['2 jobs today. Free from 4:30 PM.', 'Most jobs today. Free only at 5:30 PM.', 'Fewest jobs today. Free from 3:30 PM.']
 export const reassignBinds = (close: () => void, m: NonNullable<Modal>, who: number, setWho: (n: number) => void, nav: NavApi<Screen>): Binds => B(
-  { '234:469': { style: { animation: 'figfade .2s ease both' } } },
+  { '234:469': { style: { animation: 'figfade .2s ease both' } } }, hide('234:424'),
   txt('234:473', `Reassign ${m.from === 'blocked' ? 'Room ' + BLOCKED[m.i || 0].room : DISPUTES[m.i || 0].room}?`),
   ...[['234:475', 'Ravi'], ['234:486', 'Imran'], ['234:501', 'Deepak']].map(([c, name], k) => ({ [c]: { onClick: () => { fx.select(); setWho(k) }, label: name, style: { background: who === k ? '#FFD265' : '#FFFBF3' } } })),
   txt('234:508', PICK[who]),
@@ -315,7 +336,7 @@ export function Fixtures() {
   return <Fig s={S.fixtures} binds={B(...FX.map((f, j) => B(
     ...f[3].map((r, k) => ({ [id(r)]: { wrap: pop(0.2 + j * 0.1 + k * 0.08) } })),
     btn(f[4], () => nav.go('fixtureOne', { tr: 'none', p: { i: j } }), 'Open ' + FIXTURES[j].room),
-  )))} />
+  )))} extra={<EdgePeeker side="bottom" at={1120} tone="yellow" delay={1.4} glance={-1} />} />
 }
 export function FixtureOne() {
   const { nav } = useApp()
@@ -346,7 +367,7 @@ export function Team() {
     ...labels.map(n => ({ [n.i]: { style: { animation: `figfade .3s ease ${delayOf(n.y) + (n.x - 500) / 2400 + 0.25}s both` } } })),
     { '232:2416': { wrap: rev('y', 0.9, 0.8) } },
     btn(2419, () => nav.go('rules', { tr: 'none' }), 'Notification rules'),
-  )} />
+  )} extra={<EdgePeeker side="bottom" at={1230} tone="blue" delay={1.6} glance={-1} />} />
 }
 const SHIFTS = ['10 AM to 6 PM', '10 AM to 2 PM', '2 to 6 PM']
 const BLOCKSETS = [['BG, F, C', 'A, B', 'C, D', 'D, E'], ['A, B, C', 'D, E', 'BG, F', 'C']]
@@ -359,7 +380,7 @@ export function Tech() {
   const bump = (k: 'shift' | 'blockSet', n: number) => { fx.select(); store.set(s => ({ [k]: s[k].map((v, j) => (j === i ? (v + 1) % n : v)) })) }
   return <Fig s={S.tech} binds={B(
     txt(2452, t.name), txt(2453, `Shift ${SHIFTS[shift]} · Blocks ${blocks} · Hindi and English`),
-    i ? txt(2493, 'their phone shows Hindi big, English small') : {},
+    hide(2493),
     { '232:2456': { wrap: pop(0.2, fx.check) }, '232:2463': { wrap: pop(0.35, fx.check) }, '232:2470': { wrap: pop(0.5) }, '232:2476': { wrap: pop(0.65) } },
     btn(2489, () => bump('blockSet', 2), 'Change blocks'), btn(2491, () => bump('shift', SHIFTS.length), 'Change shift'),
   )} />
