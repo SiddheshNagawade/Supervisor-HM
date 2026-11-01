@@ -79,5 +79,9 @@ Shared file (master in `student-hm/tools/shared/src/fig/`), plays once, never an
 - Tool loaders (ToolLoader / ToolOverlay in src/fig/extras.tsx, parts 	ool-*.svg, pen sketches): rocket screwdriver = supervisor confirms (Accept and assign, Merge, Escalate, Reassign, Save rules, via usy() in the supervisor Ctx); wrench and bolt = student sends to supervisor, books a new slot, joins a report; bulb = student code check and technician PIN. Timing is by hand in rAF (clamp the clock to >= 0: the first frame can be before t0).
 - Forecast logic: capacity is 10 jobs a day. Monday has 8 (room), Tuesday has 12 (2 over); the two over-the-line Tuesday dots (232:1510, 232:1506) hop to Monday and turn navy, so both days fit. The note says Tuesday has 2 jobs too many (was 4).
 
+## Loading and fitting (done)
+- A screen never shows half drawn: `Fig` waits for the fonts and all its drawings (`src/fig/preload.ts`); the sidebar waits for its icons. One request per screen via `scripts/make-bundles.cjs` (npm `prebuild`, output git-ignored); other screens fetched in idle time; `vercel.json` sets cache headers.
+- Fitting: `useViewport` (`src/ds/viewport.ts`) feeds `useFit` in `App.tsx`; with the keyboard open the desk keeps its width and scrolls. Shared code master: `student-hm/tools/shared`.
+
 ## Checking work
 Build: `npx vite build`; preview: `npx vite preview --port 4301`. Use Playwright (390x844 for phone apps, 1440x900 for the desk) to screenshot every screen and catch console errors before pushing. Compare against Figma screenshots when layout changes.

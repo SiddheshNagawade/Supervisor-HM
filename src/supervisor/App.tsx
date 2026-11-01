@@ -12,6 +12,13 @@ import FIG from './fig.json'
 import { store, NEW_ROW } from './store'
 import { PeekHost, OfflineBuddy } from '../fig/mascot'
 import { ToolOverlay } from '../fig/extras'
+import { useViewport, useKeepFocusVisible, VP } from '../ds/viewport'
+import { useAssets, prefetchBundles, fileUrl } from '../fig/preload'
+import { preloadMascot } from '../fig/mascot'
+
+// once the first screen is up, quietly fetch every other screen's packed drawings (one request each), so later screens appear whole at once
+const BACKGROUND = ['build-1', 'build-2', 'build-3', 'build-log', 'tool-driver', 'tool-flame']
+function warmEverything() { prefetchBundles(Object.values(S).map(f => f.i), BACKGROUND.map(fileUrl)); setTimeout(() => preloadMascot(), 1500) }
 
 const RAW = (FIG as unknown as { screens: Record<string, FNode> }).screens
 const from = (s: FNode, firstId: string, skip: string[] = []): FNode => {
@@ -105,17 +112,11 @@ const GROUPS: [string, [Screen, string][]][] = [
 
 /** Scale the desk to the window (never cropped). On a wide or tall window the page fills the extra room instead of leaving bars;
     on a phone or a tablet held upright the desk keeps a readable size and you scroll sideways. */
-function useFit(needW: number) {
-  const [v, setV] = useState({ k: 1, W: needW, H: 900 })
-  useEffect(() => {
-    const f = () => {
-      const fit = Math.min(innerWidth / needW, innerHeight / 900)
-      const k = Math.max(fit, Math.min(0.62, innerHeight / 900))
-      setV({ k, W: Math.max(needW, Math.ceil(innerWidth / k)), H: Math.max(900, Math.ceil(innerHeight / k)) })
-    }
-    f(); addEventListener('resize', f); return () => removeEventListener('resize', f)
-  }, [needW])
-  return v
+function useFit(needW: number, vp: VP) {
+  // with the keyboard up the desk keeps its width fit (and scrolls) instead of being squashed into the strip the keyboard leaves
+  const fit = vp.kb ? vp.w / needW : Math.min(vp.w / needW, vp.h / 900)
+  const k = Math.max(fit, Math.min(0.62, vp.h / 900))
+  return { k, W: Math.max(needW, Math.ceil(vp.w / k)), H: Math.max(900, Math.ceil(vp.h / k)) }
 }
 const scrimCss = (c?: string) => { if (!c || !c.startsWith('#')) return 'rgba(0,34,78,.5)'; const [h, al] = c.split('@'); const n = parseInt(h.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${al ?? 1})` }
 export default function App() {
@@ -138,7 +139,10 @@ export default function App() {
   }, [open])
   const sel = RAIL_OF[nav.screen]
   const extra = sel >= 0 && open ? RAIL_OPEN - RAIL_SHUT : 0
-  const { k, W, H } = useFit(1440 + extra)
+  const vp = useViewport(); useKeepFocusVisible()
+  useEffect(() => { warmEverything() }, [])
+  const { k, W, H } = useFit(1440 + extra, vp)
+  const railReady = useAssets(RAIL_ICONS) // the sidebar appears with its pictures, never before them
   const frameLeft = extra + Math.max(0, (W - 1440 - extra) / 2) // the desk sits in the room left over, next to the rail
   const go = (s: Screen) => nav.reset(s, { tr: 'none' })
   const El = SCREENS[nav.screen]
@@ -151,14 +155,14 @@ export default function App() {
   ]
   return (
     <Ctx.Provider value={{ nav, setModal: (m: Modal) => { if (m) fx.pop(); setModal(m) }, busy: (fn: () => void) => { if (!job) setJob({ fn }) } }}>
-      <div style={{ position: 'fixed', inset: 0, background: '#FFFBF3', overflow: 'auto' }}>
+      <div style={{ position: 'fixed', left: 0, right: 0, top: vp.top, height: vp.h, background: '#FFFBF3', overflow: 'auto', overscrollBehavior: 'contain' }}>
         <div style={{ width: W * k, height: H * k }}>
           <div style={{ width: W, height: H, transform: `scale(${k})`, transformOrigin: '0 0', transition: 'transform .3s cubic-bezier(.22,1,.36,1)', position: 'relative', overflow: 'hidden', background: '#FFFBF3' }}>
             <div style={{ position: 'absolute', left: frameLeft, top: 0, width: 1440, height: 900, overflow: 'hidden', transition: 'left .3s cubic-bezier(.22,1,.36,1)' }}>
               <Stage nav={nav as never}><El /></Stage>
               {modal && <Dialog key={modal.kind} m={modal} close={() => { fx.tap(); setModal(null) }} nav={nav} />}
             </div>
-            {sel >= 0 && <Rail sel={sel} go={go} open={open} setOpen={setOpen} H={H} signOut={() => { fx.tap(); store.set({ signedIn: false }); go('signin') }} />}
+            {sel >= 0 && railReady && <Rail sel={sel} go={go} open={open} setOpen={setOpen} H={H} signOut={() => { fx.tap(); store.set({ signedIn: false }); go('signin') }} />}
             {modal && (() => { const c = scrimCss(modalFrame(modal.kind).k![0].f); return <>
               <div style={{ position: 'absolute', left: 0, top: 0, width: frameLeft, height: H, background: c, zIndex: 21, pointerEvents: 'none' }} />
               <div style={{ position: 'absolute', left: frameLeft + 1440, top: 0, width: Math.max(0, W - frameLeft - 1440), height: H, background: c, zIndex: 21, pointerEvents: 'none' }} />
