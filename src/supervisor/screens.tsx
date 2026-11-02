@@ -37,7 +37,7 @@ const wrapAll = (ns: FNode[], fn: (n: FNode, i: number) => (el: ReactNode) => Re
 const arts = (s: FNode, pred: (n: FNode) => boolean) => (s.k || []).filter(n => n.art && pred(n))
 
 /** Real photographs, with a paper-coloured chip behind any caption that sits on top of one. */
-const PH = (n: string) => `${import.meta.env.BASE_URL}photos/${n}.jpg`
+const PH = (n: string) => (/^(data:|https?:|blob:)/.test(n) ? n : `${import.meta.env.BASE_URL}photos/${n}.jpg`)
 const CAP: React.CSSProperties = { background: '#FFFBF3', padding: '1px 9px', borderRadius: 9, width: 'auto', border: '2px solid #00224E', boxSizing: 'border-box' }
 
 /** Round back button, left of the page title (same drawing as the technician app's). Goes to the list this screen was opened from. */

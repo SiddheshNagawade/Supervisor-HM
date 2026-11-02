@@ -5,10 +5,11 @@ const cache = new Map<string, Remote>(), added = new Set<string>(), sent = new S
 const place = (w: string): Row['place'] => (/corridor/i.test(w) ? 'Corridor' : /washroom/i.test(w) ? 'Washroom' : /pump/i.test(w) ? 'Pump room' : 'Room')
 watchReqs(r => {
   cache.set(r.id, r); const d = r.data, id = 'q' + r.id
+  if (d.stage >= 2) { added.add(id); sent.add(id); store.set(s => (s.rows.some(x => x.id === id) ? { rows: s.rows.filter(x => x.id !== id) } : {})); return }
   if (d.stage <= 1 && !added.has(id) && !sent.has(id)) {
     added.add(id)
     const w = String(d.where || ''), room = w.split(' ').pop() || ''
-    const row: Row = { ...ROWS[0], id, place: place(w), room, block: (room[0] || 'B').toUpperCase(), title: d.issue ? `${d.item}: ${d.issue}` : d.item, item: String(d.item || '').toLowerCase(), sub: `${w} · from a student`, age: 'just now', late: false, dot: 'navy', quote: d.note ? `“${d.note}”` : '', photo: null }
+    const row: Row = { ...ROWS[0], id, place: place(w), room, block: (room[0] || 'B').toUpperCase(), title: d.issue ? `${d.item}: ${d.issue}` : d.item, item: String(d.item || '').toLowerCase(), sub: `${w} · from a student`, age: 'just now', late: false, dot: 'navy', quote: d.note ? `“${d.note}”` : '', photo: (d.photo || null) as Row['photo'] }
     store.set(s => (s.rows.some(x => x.id === id) ? {} : { rows: [row, ...s.rows] }))
   }
 })
