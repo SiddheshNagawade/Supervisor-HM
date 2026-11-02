@@ -8,6 +8,7 @@ import { Reveal, Slap, PlaceDown, Settle } from '../fig/anim'
 import { NavApi } from '../ds/nav'
 import { fx } from '../ds/fx'
 import { Shot } from '../ds/camera'
+import { BHAWANS, blockNames } from '../ds/bhawans'
 import { Hanging, peek } from '../fig/mascot'
 import { ScoreDial, InkStamp } from '../fig/extras'
 import FIG from './fig.json'
@@ -18,7 +19,7 @@ export const S = (FIG as unknown as { screens: Record<string, FNode> }).screens
 export const RAILSETS = (FIG as unknown as { rail: string[][] }).rail
 
 export type Screen = 'signin' | 'desk' | 'check' | 'review' | 'closure' | 'forecast' | 'blocked' | 'blockedOne' | 'disputes' | 'disputeOne'
-  | 'fixtures' | 'fixtureOne' | 'team' | 'tech' | 'rules' | 'e404' | 'offline' | 'e500' | 'expired'
+  | 'fixtures' | 'fixtureOne' | 'team' | 'tech' | 'rules' | 'e404' | 'offline' | 'e500' | 'expired' | 'setup'
 export type Modal = { kind: 'merge' | 'escalate' | 'reassign'; i?: number; from?: 'blocked' | 'dispute'; rowId?: string } | null
 type AppCtx = { nav: NavApi<Screen>; setModal: (m: Modal) => void; busy: (fn: () => void) => void } // busy: the screwdriver rocket zooms across, then fn runs
 export const Ctx = createContext<AppCtx>(null!)
@@ -95,7 +96,7 @@ function SignInLike({ s, ids }: { s: FNode; ids: { email: string; pass: string; 
   const submit = () => {
     if (!EMAIL_OK.test(email.trim())) { fx.error(); setErr('email'); return }
     if (!pass) { fx.error(); setErr('pass'); return }
-    fx.success(); store.set({ signedIn: true, email: email.trim() }); nav.reset('desk', { tr: 'none' }); setTimeout(() => peek({ mood: 'wave', say: 'Hi Meera!', sub: 'Three things need you today.' }), 700)
+    fx.success(); store.set({ signedIn: true, email: email.trim() }); nav.reset(store.get().setupDone ? 'desk' : 'setup', { tr: 'none' }); setTimeout(() => peek({ mood: 'wave', say: 'Hi Meera!', sub: 'Three things need you today.' }), 700)
   }
   const brick = { color: '#B8530A' }
   const dots = arts(s, n => n.n === 'd' && n.w === 26)
@@ -116,18 +117,16 @@ export const SignIn = () => <SignInLike s={S.signin} ids={{ email: '232:551', pa
 export const Expired = () => <SignInLike s={S.expired} ids={{ email: '236:1377', pass: '236:1380', r1: '236:1378', r2: '236:1381', go: '236:1382', forgot: '236:1384', l1: '236:1376', l2: '236:1379' }} />
 
 /* ================= Desk ================= */
-const BHAWAN = ['Himalaya Bhawan · all blocks  ⌄', 'Himalaya Bhawan · Block A  ⌄', 'Himalaya Bhawan · Block B  ⌄', 'Himalaya Bhawan · Block C  ⌄', 'Himalaya Bhawan · Block D  ⌄']
 export function Desk() {
   const { nav, setModal } = useApp()
-  const b = store.use(x => x.bhawan)
   const s = S.desk
   const chart = arts(s, n => n.n === 'dot' && n.w === 22 && n.y <= 470)
   const cols = [...new Set(chart.map(d => d.x))].sort((a, c) => a - c)
   const open = 33 - Math.min(store.use(x => x.closureAt), 6) // every accepted closure takes one job off the pile
   const dial = (
-    <div style={{ position: 'absolute', left: 690, top: 4 }}>
-      <ScoreDial value={(open / 40) * 0.8} w={210} dots={15} sound>
-        <span style={{ font: '800 34px/36px "League Spartan", sans-serif', color: '#00224E' }}>{open}</span>
+    <div style={{ position: 'absolute', left: 1106, top: 2 }}>
+      <ScoreDial value={(open / 40) * 0.8} w={136} dots={13} sound>
+        <span style={{ font: '800 28px/30px "League Spartan", sans-serif', color: '#00224E' }}>{open}</span>
         <span style={{ font: '500 14px/18px "DM Mono", monospace', color: '#3E4F72', marginLeft: 8 }}>open now</span>
       </ScoreDial>
     </div>
@@ -135,7 +134,7 @@ export function Desk() {
   return <Fig s={s} extra={dial} binds={B(
     hide(590),
     txt(589, `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, Meera.`),
-    btn(591, () => store.set({ bhawan: (b + 1) % BHAWAN.length }), 'Change block'), txt(592, BHAWAN[b]),
+    hide(591, 592), // the Bhawan and block chooser is not needed on the desk
     wrapAll(chart, n => drop(0.15 + cols.indexOf(n.x) * 0.12 + (468 - n.y) / 24 * 0.04)),
     { '232:732': { wrap: rev('y', 0.9, 0.7) } },
     { '232:759': { wrap: rev('x', 0.5) }, '232:789': { wrap: rev('x', 0.6) }, '232:813': { wrap: rev('x', 0.7) }, '232:833': { wrap: rev('x', 0.8) } },
@@ -191,7 +190,7 @@ export function Review() {
     txt(1025, `${r.item}, ${whereOf(r.room, r.place)}`, CAP),
     r.photo ? { '232:1026': { wrap: slap(0.4) } } : { '232:1026': { wrap: slap(0.25), dy: -344 }, '232:1031': { dy: -344 } },
     txt(1031, r.quote), hide(1042), // "same fixture, same room" was a designer's note
-    r.dup ? { '232:1034': { wrap: place(0.55) } } : hide(1032, 1033, 1034, 1038, 1039, 1040, 1041),
+    { '232:1034': { wrap: place(0.55) } }, txt(1038, r.sim.title), txt(1039, r.sim.sub),
     btn(1040, () => setModal({ kind: 'merge', rowId: r.id }), 'Merge'),
     ...CHIPS.map(([c, name], i) => ({ [c]: { onClick: () => { fx.select(); setWho(i) }, label: 'Assign to ' + name, style: { background: who === i ? '#FFD265' : '#FFFBF3' } } })),
     { '232:1046': { wrap: pop(0.7) }, '232:1050': { wrap: pop(0.75) }, '232:1057': { wrap: pop(0.8) }, '232:1061': { wrap: pop(0.85) }, '232:1065': { wrap: pop(0.9) }, '232:1072': { wrap: pop(0.95) } },
@@ -201,6 +200,7 @@ export function Review() {
 }
 export const mergeBinds = (close: () => void, nav: NavApi<Screen>, rowId: string | undefined, busy: (fn: () => void) => void): Binds => B(
   { '232:1183': { style: { animation: 'figfade .2s ease both' } } }, hide('232:1144'),
+  (() => { const r = store.get().rows.find(x => x.id === rowId); if (!r) return {}; const w = whereOf(r.room, r.place); return B(txt('232:1197', r.title), txt('232:1198', `${w} · today`), txt('232:1203', r.sim.short), txt('232:1204', `${w} · ${r.sim.ago}`), txt('232:1188', `The two reports become one job for ${w}. Both students still get updates, and the technician has one ${r.item} to fix.`)) })(),
   { '232:1193': { wrap: place(0.15) }, '232:1199': { wrap: place(0.3) }, '232:1205': { wrap: rev('x', 0.45, 0.5) } },
   btn(1189, () => busy(() => { fx.stamp(); peek({ mood: 'cheer', say: 'Merged into one job.' }); if (rowId) done(rowId); close(); nav.reset('check', { tr: 'none' }) }), 'Merge'),
   btn(1191, close, 'Keep separate'),
@@ -251,10 +251,10 @@ export function Forecast() {
     wrapAll(dots, n => drop(0.15 + cols.indexOf(n.x) * 0.1 + (568 - n.y) / 24 * 0.035)),
     ...MOVERS.map((id, k) => mover(dots.find(d => d.i === id)!, k)),
     hidden,
-    txt(1522, '+2 over', { top: 260 }), txt(1642, 'Tuesday has 2 jobs too many. Moving two to Monday keeps every promise.'),
+    txt(1522, '+2 over', { top: 260 }), txt(1642, 'Tuesday has 2 jobs more than the team can do. Move 2 of them to Monday, and every job stays on time.'), txt(1633, 'what 4 technicians can do in a day'),
     { '232:1631': { wrap: rev('x', 1.0, 1.0) }, '232:1637': { wrap: slap(1.2) } }, hide(1634, 1635), // the "Tuesday is the squeeze" note and its arrow were designer's notes
     moved ? hide(1522) : {},
-    moved ? txt(1642, 'Done. Two Tuesday jobs now go on Monday, inside their promise.') : left ? txt(1642, 'Okay. Tuesday stays as it is. ALIGN will warn the team on Monday night.') : {},
+    moved ? txt(1642, 'Done. 2 jobs moved from Tuesday to Monday. Every job is still on time.') : left ? txt(1642, 'Okay. Tuesday stays as it is. We will tell the team on Monday night.') : {},
     btn(1643, () => { fx.success(); store.set({ moved: true }); setTimeout(() => peek({ mood: 'thumbs', say: 'Tuesday is lighter now.' }), 900) }, 'Move two to Monday'),
     { '232:1645': { onClick: () => { fx.tap(); store.set({ leftAlone: true }) } } },
     settled ? hide(1643, 1644, 1645, 1647) : {},
@@ -486,13 +486,56 @@ export function E500() {
   return <Fig s={S.e500} binds={B(hideIds('236:1284', '236:1290'), btn('236:1292', () => nav.reset('desk', { tr: 'none' }), 'Try again'), btn('236:1294', () => nav.reset('desk', { tr: 'none' }), 'Back to the desk'))} extra={<Hanging cx={764} top={20} scale={1.3} title="Something broke on our side." sub="Your decisions are saved." />} />
 }
 
+/* ================= First time: tell us about your Bhawan ================= */
+const FIELD_LABEL: React.CSSProperties = { font: '700 17px/22px "M PLUS Rounded 1c", sans-serif', color: '#00224E', marginBottom: 8 }
+export function Setup() {
+  const { nav } = useApp()
+  const saved = store.get()
+  const [name, setName] = useState(saved.bhawanName)
+  const [blocks, setBlocks] = useState(saved.blocks)
+  const go = () => { fx.success(); store.set({ setupDone: true, bhawanName: name, blocks }); nav.reset('desk', { tr: 'none' }); setTimeout(() => peek({ mood: 'wave', say: 'Hi Meera!', sub: `${name} is ready.` }), 700) }
+  const step = (d: number) => { const n = Math.min(12, Math.max(1, blocks + d)); if (n !== blocks) { fx.tick(n % 6); setBlocks(n) } else fx.error() }
+  const round: React.CSSProperties = { width: 52, height: 52, borderRadius: 26, border: '2.5px solid #00224E', background: '#FFFBF3', boxShadow: '0 3px 0 #00224E', font: '800 28px/1 "League Spartan", sans-serif', color: '#00224E', cursor: 'pointer', padding: 0 }
+  return (
+    <div style={{ position: 'relative', width: 1440, height: 900, background: '#FFFBF3', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', left: 140, top: 56, font: '800 22px/26px "League Spartan", sans-serif', color: '#00224E' }}>ALIGN</div>
+      <div style={{ position: 'absolute', left: 420, top: 150, width: 600, boxSizing: 'border-box', borderRadius: 24, border: '2.5px solid #00224E', background: '#FFFBF3', boxShadow: '4px 6px 0 #00224E', padding: '40px 44px 44px' }}>
+        <div style={{ font: '800 40px/46px "League Spartan", sans-serif', color: '#00224E' }}>Tell us about your Bhawan</div>
+        <div style={{ font: '500 18px/26px "M PLUS Rounded 1c", sans-serif', color: '#3E4F72', marginTop: 8 }}>This sets up your desk. It takes a few seconds.</div>
+        <div style={{ marginTop: 32 }}>
+          <div style={FIELD_LABEL}>Name of the Bhawan</div>
+          <div style={{ position: 'relative' }}>
+            <select value={name} onChange={e => { fx.select(); setName(e.target.value) }} aria-label="Name of the Bhawan"
+              style={{ width: '100%', height: 56, boxSizing: 'border-box', appearance: 'none', WebkitAppearance: 'none', borderRadius: 16, border: '2.5px solid #00224E', background: '#FFFFFF', padding: '0 52px 0 18px', font: '500 20px/26px "M PLUS Rounded 1c", sans-serif', color: '#00224E', cursor: 'pointer' }}>
+              {BHAWANS.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true" style={{ position: 'absolute', right: 18, top: 17, pointerEvents: 'none' }}><path d="M4 8l7 7 7-7" stroke="#00224E" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </div>
+        </div>
+        <div style={{ marginTop: 28 }}>
+          <div style={FIELD_LABEL}>How many blocks are in your Bhawan?</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <button type="button" onClick={() => step(-1)} aria-label="One block less" className="fig-press" style={round}>−</button>
+            <div aria-live="polite" style={{ minWidth: 56, textAlign: 'center', font: '800 44px/1 "League Spartan", sans-serif', color: '#00224E' }}>{blocks}</div>
+            <button type="button" onClick={() => step(1)} aria-label="One block more" className="fig-press" style={round}>+</button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+            {blockNames(blocks).map(b => <span key={b} style={{ height: 32, borderRadius: 12, border: '2px solid #00224E', background: '#FFF1C7', padding: '0 12px', font: '700 15px/28px "M PLUS Rounded 1c", sans-serif', color: '#00224E' }}>Block {b}</span>)}
+          </div>
+        </div>
+        <button type="button" onClick={go} className="fig-press" style={{ marginTop: 36, height: 58, padding: '0 34px', borderRadius: 29, border: 0, background: '#1230E6', boxShadow: '0 4px 0 #00122E', font: '800 20px/1 "League Spartan", sans-serif', color: '#FFFFFF', cursor: 'pointer' }}>Open my desk</button>
+      </div>
+    </div>
+  )
+}
+
 export const SCREENS: Record<Screen, () => React.ReactElement> = {
-  signin: SignIn, desk: Desk, check: Check, review: Review, closure: Closure, forecast: Forecast, blocked: Blocked, blockedOne: BlockedOne,
+  signin: SignIn, setup: Setup, desk: Desk, check: Check, review: Review, closure: Closure, forecast: Forecast, blocked: Blocked, blockedOne: BlockedOne,
   disputes: Disputes, disputeOne: DisputeOne, fixtures: Fixtures, fixtureOne: FixtureOne, team: Team, tech: Tech, rules: Rules,
   e404: E404, offline: Offline, e500: E500, expired: Expired,
 }
 /** Which rail item is lit for each screen (as in the Figma). */
 export const RAIL_OF: Record<Screen, number> = {
-  signin: -1, expired: -1, desk: 0, check: 1, review: 1, closure: 1, forecast: 2, blocked: 3, blockedOne: 3, disputes: 4, disputeOne: 4,
+  signin: -1, expired: -1, setup: -1, desk: 0, check: 1, review: 1, closure: 1, forecast: 2, blocked: 3, blockedOne: 3, disputes: 4, disputeOne: 4,
   fixtures: 5, fixtureOne: 5, team: 6, tech: 6, rules: 6, e404: 0, offline: 0, e500: 0,
 }

@@ -104,7 +104,7 @@ function Dialog({ m, close, nav }: { m: NonNullable<Modal>; close: () => void; n
 }
 
 const GROUPS: [string, [Screen, string][]][] = [
-  ['Getting in', [['signin', 'Sign in'], ['expired', 'Session expired']]],
+  ['Getting in', [['signin', 'Sign in'], ['setup', 'Bhawan details'], ['expired', 'Session expired']]],
   ['Desk and checking', [['desk', 'Desk'], ['check', 'To check'], ['review', 'Review report'], ['closure', 'Closure review']]],
   ['Problems', [['forecast', 'Load forecast'], ['blocked', 'Blocked'], ['blockedOne', 'Blocked job'], ['disputes', 'Disputes'], ['disputeOne', 'Dispute']]],
   ['Fixtures and team', [['fixtures', 'Fixtures'], ['fixtureOne', 'Fixture history'], ['team', 'Team'], ['tech', 'Technician'], ['rules', 'Rules']]],
