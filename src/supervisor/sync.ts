@@ -4,6 +4,7 @@ import { pushReq, watchReqs, Remote } from '../data/sync'
 const cache = new Map<string, Remote>(), added = new Set<string>(), sent = new Set<string>()
 const place = (w: string): Row['place'] => (/corridor/i.test(w) ? 'Corridor' : /washroom/i.test(w) ? 'Washroom' : /pump/i.test(w) ? 'Pump room' : 'Room')
 watchReqs(r => {
+  if (!r || !r.data || typeof r.data !== 'object') return
   cache.set(r.id, r); const d = r.data, id = 'q' + r.id
   if (d.stage >= 2) { added.add(id); sent.add(id); store.set(s => (s.rows.some(x => x.id === id) ? { rows: s.rows.filter(x => x.id !== id) } : {})); return }
   if (d.stage <= 1 && !added.has(id) && !sent.has(id)) {
