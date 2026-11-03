@@ -3,7 +3,7 @@
    and plays each drawing's own one-time animation when the screen opens. */
 import React, { ReactNode, createContext, useContext, useEffect, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Fig, FNode, Binds, textStyle } from '../fig/Fig'
+import { Fig, FNode, Bind, Binds, textStyle } from '../fig/Fig'
 import { Reveal, Slap, PlaceDown, Settle } from '../fig/anim'
 import { NavApi } from '../ds/nav'
 import { fx } from '../ds/fx'
@@ -86,6 +86,15 @@ const field = (n: string | number, value: string, onChange: (v: string) => void,
 })
 
 /* ================= Sign in, and Session expired (same layout) ================= */
+/** The Align mark in front of the Figma "Align" wordmark (Kodchasan Bold), sized to the wordmark. */
+const LOGO_SRC = `${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}logo.svg`
+const wordmark = (light = false): Bind => ({ style: { width: 'auto', whiteSpace: 'nowrap' }, render: (n: FNode) => (
+  <span style={{ display: 'flex', alignItems: 'center', gap: Math.round((n.fs || 26) * 0.35), height: n.h }}>
+    <img src={LOGO_SRC} alt="" width={Math.round((n.fs || 26) * 1.15)} height={Math.round((n.fs || 26) * 1.15)} style={{ borderRadius: '50%', boxShadow: light ? 'none' : '0 0 0 2px #00224E', flexShrink: 0 }} />
+    <span style={{ ...textStyle(n), lineHeight: `${n.h}px`, width: 'auto' }}>{n.c}</span>
+  </span>
+) })
+
 function SignInLike({ s, ids }: { s: FNode; ids: { email: string; pass: string; r1: string; r2: string; go: string; forgot: string; l1: string; l2: string } }) {
   const { nav } = useApp()
   const saved = store.use(x => x.email)
@@ -102,6 +111,7 @@ function SignInLike({ s, ids }: { s: FNode; ids: { email: string; pass: string; 
   const dots = arts(s, n => n.n === 'd' && n.w === 26)
   const cols = [...new Set(dots.map(d => d.x))].sort((a, b) => a - b)
   return <Fig s={s} binds={B(
+    { '232:473': wordmark(true), '236:1299': wordmark(true) },
     field(ids.email, email, v => { setEmail(v); setErr('') }, { width: 436, onEnter: submit }),
     field(ids.pass, pass, v => { setPass(v); setErr('') }, { width: 436, type: 'password', onEnter: submit }),
     err === 'email' ? B(txt(ids.l1, 'Use your institute email, like name@design.iitr.ac.in', brick), { [ids.r1]: { style: { background: '#B8530A' } } }) : {},
@@ -498,7 +508,7 @@ export function Setup() {
   const round: React.CSSProperties = { width: 52, height: 52, borderRadius: 26, border: '2.5px solid #00224E', background: '#FFFBF3', boxShadow: '0 3px 0 #00224E', font: '800 28px/1 "League Spartan", sans-serif', color: '#00224E', cursor: 'pointer', padding: 0 }
   return (
     <div style={{ position: 'relative', width: 1440, height: 900, background: '#FFFBF3', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', left: 140, top: 56, font: '800 22px/26px "League Spartan", sans-serif', color: '#00224E' }}>ALIGN</div>
+      <div style={{ position: 'absolute', left: 140, top: 48, display: 'flex', alignItems: 'center', gap: 10 }}><img src={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}logo.svg`} alt="" width={40} height={40} style={{ borderRadius: 20, boxShadow: '0 0 0 2px #00224E' }} /><span style={{ font: '700 26px/30px Kodchasan, sans-serif', color: '#00224E' }}>Align</span></div>
       <div style={{ position: 'absolute', left: 420, top: 150, width: 600, boxSizing: 'border-box', borderRadius: 24, border: '2.5px solid #00224E', background: '#FFFBF3', boxShadow: '4px 6px 0 #00224E', padding: '40px 44px 44px' }}>
         <div style={{ font: '800 40px/46px "League Spartan", sans-serif', color: '#00224E' }}>Tell us about your Bhawan</div>
         <div style={{ font: '500 18px/26px "M PLUS Rounded 1c", sans-serif', color: '#3E4F72', marginTop: 8 }}>This sets up your desk. It takes a few seconds.</div>

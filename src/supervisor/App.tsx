@@ -65,9 +65,9 @@ function Rail({ sel, go, signOut, open, setOpen, H }: { sel: number; go: (s: Scr
         onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} onFocus={() => setHov(true)} onBlur={() => setHov(false)}
         onClick={() => { fx.tap(); setOpen(!open) }} className="fig-press"
         style={{ position: 'absolute', left: open ? 18 : 22, top: 20, width: 44, height: 44, borderRadius: open ? 12 : 22, background: hov || open ? 'rgba(255,251,243,.12)' : '#FFFBF3', border: 0, cursor: 'pointer', fontFamily: 'Kodchasan, sans-serif', fontWeight: 700, fontSize: 28, lineHeight: '36px', color: '#00224E', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background .15s, border-radius .2s' }}>
-        {hov || open ? <PanelGlyph open={open} /> : 'A'}
+        {hov || open ? <PanelGlyph open={open} /> : <img src={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}logo.svg`} alt="" width={44} height={44} draggable={false} style={{ display: 'block' }} />}
       </button>
-      <span style={{ position: 'absolute', left: 74, top: 30, ...label, fontWeight: 800, fontSize: 24, lineHeight: '24px', color: '#FFFBF3', opacity: open ? 1 : 0, transition: 'opacity .2s', pointerEvents: 'none' }}>Align</span>
+      <span style={{ position: 'absolute', left: 74, top: 28, fontFamily: 'Kodchasan, sans-serif', fontWeight: 700, fontSize: 26, lineHeight: '28px', whiteSpace: 'nowrap', color: '#FFFBF3', opacity: open ? 1 : 0, transition: 'opacity .2s', pointerEvents: 'none' }}>Align</span>
       {sel >= 0 && <motion.div initial={false} animate={{ top: 98 + 68 * sel, width: RW - 24 }} transition={sp}
         style={{ position: 'absolute', left: 12, height: 50, borderRadius: 14, background: '#FFFBF3' }} />}
       {RAIL_ICONS.map((src, i) => (
