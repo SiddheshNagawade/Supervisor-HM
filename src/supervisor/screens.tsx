@@ -87,10 +87,10 @@ const field = (n: string | number, value: string, onChange: (v: string) => void,
 
 /* ================= Sign in, and Session expired (same layout) ================= */
 /** The Align mark in front of the Figma "Align" wordmark (Kodchasan Bold), sized to the wordmark. */
-const LOGO_SRC = `${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}logo.svg`
+const LOGO_SRC = `${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}logo-dark.svg`
 const wordmark = (light = false): Bind => ({ style: { width: 'auto', whiteSpace: 'nowrap' }, render: (n: FNode) => (
   <span style={{ display: 'flex', alignItems: 'center', gap: Math.round((n.fs || 26) * 0.35), height: n.h }}>
-    <img src={LOGO_SRC} alt="" width={Math.round((n.fs || 26) * 1.15)} height={Math.round((n.fs || 26) * 1.15)} style={{ borderRadius: '50%', boxShadow: light ? 'none' : '0 0 0 2px #00224E', flexShrink: 0 }} />
+    <img src={LOGO_SRC} alt="" width={Math.round((n.fs || 26) * 1.3)} height={Math.round((n.fs || 26) * 1.12)} style={{ flexShrink: 0, maxWidth: 'none' }} />
     <span style={{ ...textStyle(n), lineHeight: `${n.h}px`, width: 'auto' }}>{n.c}</span>
   </span>
 ) })
@@ -508,7 +508,7 @@ export function Setup() {
   const round: React.CSSProperties = { width: 52, height: 52, borderRadius: 26, border: '2.5px solid #00224E', background: '#FFFBF3', boxShadow: '0 3px 0 #00224E', font: '800 28px/1 "League Spartan", sans-serif', color: '#00224E', cursor: 'pointer', padding: 0 }
   return (
     <div style={{ position: 'relative', width: 1440, height: 900, background: '#FFFBF3', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', left: 140, top: 48, display: 'flex', alignItems: 'center', gap: 10 }}><img src={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}logo.svg`} alt="" width={40} height={40} style={{ borderRadius: 20, boxShadow: '0 0 0 2px #00224E' }} /><span style={{ font: '700 26px/30px Kodchasan, sans-serif', color: '#00224E' }}>Align</span></div>
+      <div style={{ position: 'absolute', left: 140, top: 48, display: 'flex', alignItems: 'center', gap: 10 }}><img src={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}logo-light.svg`} alt="" width={40} height={35} style={{ maxWidth: 'none' }} /><span style={{ font: '700 26px/30px Kodchasan, sans-serif', color: '#00224E' }}>Align</span></div>
       <div style={{ position: 'absolute', left: 420, top: 150, width: 600, boxSizing: 'border-box', borderRadius: 24, border: '2.5px solid #00224E', background: '#FFFBF3', boxShadow: '4px 6px 0 #00224E', padding: '40px 44px 44px' }}>
         <div style={{ font: '800 40px/46px "League Spartan", sans-serif', color: '#00224E' }}>Tell us about your Bhawan</div>
         <div style={{ font: '500 18px/26px "M PLUS Rounded 1c", sans-serif', color: '#3E4F72', marginTop: 8 }}>This sets up your desk. It takes a few seconds.</div>
