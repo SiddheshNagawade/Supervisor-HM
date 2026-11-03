@@ -48,7 +48,7 @@ const PanelGlyph = ({ open }: { open: boolean }) => (
   <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
     <rect x="2.5" y="4.5" width="21" height="17" rx="5" stroke="#FFFBF3" strokeWidth="2.2" />
     <path d="M9.5 4.8V21.2" stroke="#FFFBF3" strokeWidth="2.2" strokeLinecap="round" />
-    <path d={open ? 'M16.5 10.5L13.5 13L16.5 15.5' : 'M13.5 10.5L16.5 13L13.5 15.5'} stroke="#FFD265" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d={open ? 'M16.5 10.5L13.5 13L16.5 15.5' : 'M13.5 10.5L16.5 13L13.5 15.5'} stroke="#8EA0FF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 )
 
@@ -188,7 +188,7 @@ export default function App() {
                   <div style={{ fontFamily: '"League Spartan", sans-serif', fontWeight: 700, fontSize: 13, color: '#3E4F72' }}>{t}</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                     {items.map(([s, l]) => <button key={s} onClick={() => { fx.tap(); if (s !== 'signin' && s !== 'expired') store.set({ signedIn: true }); go(s) }}
-                      style={{ border: '1.5px solid #00224E', borderRadius: 999, background: nav.screen === s ? '#FFD265' : '#FFFBF3', padding: '3px 10px', fontSize: 13, cursor: 'pointer', color: '#00224E' }}>{l}</button>)}
+                      style={{ border: '1.5px solid #00224E', borderRadius: 999, background: nav.screen === s ? 'rgba(14, 45, 210, .14)' : '#FFFBF3', padding: '3px 10px', fontSize: 13, cursor: 'pointer', color: '#00224E' }}>{l}</button>)}
                   </div>
                 </div>
               ))}
@@ -199,7 +199,7 @@ export default function App() {
             </div>
           )}
           <button aria-label="Try the desk" title="Try the desk: screens and events" onClick={() => { fx.tap(); setPanel(p => !p) }}
-            style={{ height: 44, padding: '0 16px', borderRadius: 22, border: '2px solid #00224E', background: panel ? '#00224E' : '#FFD265', color: panel ? '#FFFBF3' : '#00224E', boxShadow: '0 3px 0 #00224E', fontFamily: '"League Spartan", sans-serif', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
+            style={{ height: 44, padding: '0 16px', borderRadius: 22, border: '2px solid #00224E', background: panel ? '#00224E' : '#0E2DD2', color: '#FFFBF3', boxShadow: '0 3px 0 #00224E', fontFamily: '"League Spartan", sans-serif', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
             {panel ? 'Close' : 'Try it'}
           </button>
         </div>

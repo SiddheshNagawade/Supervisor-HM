@@ -192,7 +192,7 @@ export function Review() {
     txt(1031, r.quote), hide(1042), // "same fixture, same room" was a designer's note
     { '232:1034': { wrap: place(0.55) } }, txt(1038, r.sim.title), txt(1039, r.sim.sub),
     btn(1040, () => setModal({ kind: 'merge', rowId: r.id }), 'Merge'),
-    ...CHIPS.map(([c, name], i) => ({ [c]: { onClick: () => { fx.select(); setWho(i) }, label: 'Assign to ' + name, style: { background: who === i ? '#FFD265' : '#FFFBF3' } } })),
+    ...CHIPS.map(([c, name], i) => ({ [c]: { onClick: () => { fx.select(); setWho(i) }, label: 'Assign to ' + name, style: { background: who === i ? 'rgba(14, 45, 210, .14)' : '#FFFBF3' } } })),
     { '232:1046': { wrap: pop(0.7) }, '232:1050': { wrap: pop(0.75) }, '232:1057': { wrap: pop(0.8) }, '232:1061': { wrap: pop(0.85) }, '232:1065': { wrap: pop(0.9) }, '232:1072': { wrap: pop(0.95) } },
     btn(1078, finish, 'Accept and assign'),
     { '232:1080': { onClick: () => { fx.tap(); done(r.id); nav.reset('check', { tr: 'none' }) } } },
@@ -269,7 +269,7 @@ function BlockedGlance() {
   return (
     <div style={{ position: 'absolute', left: 140, top: 690, width: 1210, display: 'flex', gap: 24, pointerEvents: 'none' }}>
       {cards.map(([n, l], i) => (
-        <div key={i} style={{ flex: 1, height: 112, boxSizing: 'border-box', borderRadius: 18, border: '2.5px solid #00224E', background: i === 1 ? '#FFF1C7' : '#FFFBF3', boxShadow: '3px 4px 0 #00224E', padding: '16px 22px' }}>
+        <div key={i} style={{ flex: 1, height: 112, boxSizing: 'border-box', borderRadius: 18, border: '2.5px solid #00224E', background: i === 1 ? 'rgba(14, 45, 210, .08)' : '#FFFBF3', boxShadow: '3px 4px 0 #00224E', padding: '16px 22px' }}>
           <div style={{ font: '800 38px/42px "League Spartan", sans-serif', color: i === 1 ? '#B8530A' : '#00224E' }}>{n}</div>
           <div style={{ font: '500 15px/20px "DM Mono", monospace', color: '#3E4F72', marginTop: 4 }}>{l}</div>
         </div>
@@ -312,8 +312,8 @@ export function BlockedOne() {
 export const escalateBinds = (close: () => void, i: number, who: number, setWho: (n: number) => void, note: string, setNote: (s: string) => void, busy: (fn: () => void) => void): Binds => B(
   { '234:377': { style: { animation: 'figfade .2s ease both' } } },
   txt('234:381', `Escalate ${whereOf(BLOCKED[i].room, BLOCKED[i].place)}?`),
-  { '234:383': { onClick: () => { fx.select(); setWho(0) }, label: 'Warden', style: { background: who === 0 ? '#FFD265' : '#FFFBF3' } } },
-  { '234:385': { onClick: () => { fx.select(); setWho(1) }, label: 'Estate office', style: { background: who === 1 ? '#FFD265' : '#FFFBF3' } } },
+  { '234:383': { onClick: () => { fx.select(); setWho(0) }, label: 'Warden', style: { background: who === 0 ? 'rgba(14, 45, 210, .14)' : '#FFFBF3' } } },
+  { '234:385': { onClick: () => { fx.select(); setWho(1) }, label: 'Estate office', style: { background: who === 1 ? 'rgba(14, 45, 210, .14)' : '#FFFBF3' } } },
   field('234:387', note, setNote, { width: 516, placeholder: 'Add a line for them' }),
   btn('234:389', () => busy(() => { fx.stamp(); peek({ mood: 'point', say: `Sent to the ${who ? 'estate office' : 'warden'}.`, sub: 'You stay on the job.' }); store.set(s => ({ escalated: [...s.escalated, i] })); close() }), 'Escalate'),
   btn('234:391', close, 'Cancel'),
@@ -359,7 +359,7 @@ const PICK = ['2 jobs today. Free from 4:30 PM.', 'Most jobs today. Free only at
 export const reassignBinds = (close: () => void, m: NonNullable<Modal>, who: number, setWho: (n: number) => void, nav: NavApi<Screen>, busy: (fn: () => void) => void): Binds => B(
   { '234:469': { style: { animation: 'figfade .2s ease both' } } }, hide('234:424'),
   txt('234:473', `Reassign ${m.from === 'blocked' ? whereOf(BLOCKED[m.i || 0].room, BLOCKED[m.i || 0].place) : whereOf(DISPUTES[m.i || 0].room, DISPUTES[m.i || 0].place)}?`),
-  ...[['234:475', 'Ravi'], ['234:486', 'Imran'], ['234:501', 'Deepak']].map(([c, name], k) => ({ [c]: { onClick: () => { fx.select(); setWho(k) }, label: name, style: { background: who === k ? '#FFD265' : '#FFFBF3' } } })),
+  ...[['234:475', 'Ravi'], ['234:486', 'Imran'], ['234:501', 'Deepak']].map(([c, name], k) => ({ [c]: { onClick: () => { fx.select(); setWho(k) }, label: name, style: { background: who === k ? 'rgba(14, 45, 210, .14)' : '#FFFBF3' } } })),
   txt('234:508', PICK[who]),
   btn('234:509', () => busy(() => {
     fx.stamp(); peek({ mood: 'cheer', say: `${['Ravi', 'Imran', 'Deepak'][who]} is on it.` }); close()
@@ -520,7 +520,7 @@ export function Setup() {
             <button type="button" onClick={() => step(1)} aria-label="One block more" className="fig-press" style={round}>+</button>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
-            {blockNames(blocks).map(b => <span key={b} style={{ height: 32, borderRadius: 12, border: '2px solid #00224E', background: '#FFF1C7', padding: '0 12px', font: '700 15px/28px "M PLUS Rounded 1c", sans-serif', color: '#00224E' }}>Block {b}</span>)}
+            {blockNames(blocks).map(b => <span key={b} style={{ height: 32, borderRadius: 12, border: '2px solid #00224E', background: 'rgba(14, 45, 210, .08)', padding: '0 12px', font: '700 15px/28px "M PLUS Rounded 1c", sans-serif', color: '#00224E' }}>Block {b}</span>)}
           </div>
         </div>
         <button type="button" onClick={go} className="fig-press" style={{ marginTop: 36, height: 58, padding: '0 34px', borderRadius: 29, border: 0, background: '#1230E6', boxShadow: '0 4px 0 #00122E', font: '800 20px/1 "League Spartan", sans-serif', color: '#FFFFFF', cursor: 'pointer' }}>Open my desk</button>
